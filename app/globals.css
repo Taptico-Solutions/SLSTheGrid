@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * The GRID brand tokens (SLS).
+ * The legacy waitlist (still served under /waitlist) overrides these
+ * locally in its own layout — see app/waitlist/layout.tsx.
+ */
+@layer base {
+  :root {
+    /* SLS brand */
+    --sls-gold: 210 64% 53%; /* unused as HSL — see hex tokens in tailwind.config */
+    /* shadcn-style semantic tokens (light) */
+    --background: 0 0% 100%;
+    --foreground: 24 39% 8%; /* #1b110b */
+    --card: 0 0% 100%;
+    --card-foreground: 24 39% 8%;
+    --muted: 50 35% 95%; /* sand-tinted */
+    --muted-foreground: 220 8% 35%;
+    --accent: 38 62% 53%; /* gold */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 47 38% 83%; /* sls-sand */
+    --ring: 38 62% 53%;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+    color: #1b110b;
+    font-family: var(--font-inter), Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-roboto-slab), "Roboto Slab", serif;
+    font-weight: 600;
+    color: #1b110b;
+  }
+}
+
+@layer components {
+  .sls-page-title {
+    @apply font-slab uppercase tracking-tight text-2xl md:text-3xl text-sls-dark-brown;
+  }
+
+  .sls-card {
+    @apply bg-white border border-sls-sand rounded-md shadow-card;
+  }
+
+  .sls-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .sls-badge-approved { @apply bg-emerald-100 text-emerald-800; }
+  .sls-badge-pending  { @apply bg-gray-100  text-gray-700; }
+  .sls-badge-progress { @apply bg-blue-100  text-blue-800; }
+  .sls-badge-rejected { @apply bg-red-100   text-red-800; }
+  .sls-badge-review   { @apply bg-yellow-100 text-yellow-800; }
+
+  .sls-btn-gold {
+    @apply inline-flex items-center justify-center rounded-md border border-sls-gold
+           bg-transparent px-4 py-2 text-sls-gold font-semibold transition
+           hover:bg-sls-gold hover:text-white focus:outline-none focus:ring-2 focus:ring-sls-gold focus:ring-offset-2;
+  }
+}
