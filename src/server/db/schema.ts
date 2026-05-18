@@ -113,6 +113,17 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "system",
 ]);
 
+
+
+export const toolRequestStatusEnum = pgEnum("tool_request_status", [
+  "new",
+  "reviewing",
+  "approved",
+  "declined",
+  "in_progress",
+  "shipped",
+]);
+
 // ─── 4.1 users ────────────────────────────────────────────────────────────
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -388,6 +399,27 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
   project: one(projects, { fields: [notifications.projectId], references: [projects.id] }),
 }));
+
+
+
+// ─── 4.13 tool_requests (portal users request AI tools to be built) ────────
+export const toolRequests = pgTable("tool_requests", {
+  id: serial("id").primaryKey(),
+  requesterId: integer("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requesterName: varchar("requester_name", { length: 255 }).notNull(),
+  toolType: varchar("tool_type", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  documentationFileKey: varchar("documentation_file_key", { length: 500 }),
+  documentationFileUrl: text("documentation_file_url"),
+  documentationFileType: varchar("documentation_file_type", { length: 128 }),
+  documentationFileSize: integer("documentation_file_size"),
+  status: toolRequestStatusEnum("status").notNull().default("new"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ToolRequest = typeof toolRequests.$inferSelect;
 
 // ─── Convenience types ───────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;

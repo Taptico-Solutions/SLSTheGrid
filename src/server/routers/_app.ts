@@ -1,6 +1,7 @@
 import { router } from "../trpc";
 import { authRouter } from "./auth";
 import { adminRouter } from "./admin";
+import { toolRequestsRouter } from "./toolRequests";
 import { projectsRouter } from "./projects";
 import { productsRouter } from "./products";
 import { documentsRouter } from "./documents";
@@ -22,6 +23,7 @@ import { seedRouter } from "./seed";
 export const appRouter = router({
   auth: authRouter,
   admin: adminRouter,
+  toolRequests: toolRequestsRouter,
   projects: projectsRouter,
   products: productsRouter,
   documents: documentsRouter,

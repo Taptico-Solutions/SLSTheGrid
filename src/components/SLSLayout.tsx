@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
+  Lightbulb,
   FolderKanban,
   FileText,
   CheckSquare,
@@ -70,6 +71,7 @@ const SECTIONS: NavSection[] = [
     label: "Tools",
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell },
+      { label: "Request a Tool", href: "/tool-requests", icon: Lightbulb },
     ],
   },
   {
