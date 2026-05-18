@@ -19,9 +19,6 @@ const ROLE_OPTIONS = [
 export default function AdminPage() {
   const me = trpc.auth.me.useQuery();
   const projects = trpc.projects.list.useQuery();
-  const seedStatus = trpc.seed.status.useQuery();
-  const loadSeed = trpc.seed.load.useMutation();
-  const clearSeed = trpc.seed.clear.useMutation();
   const invite = trpc.admin.invite.useMutation();
   const utils = trpc.useUtils();
 
@@ -61,9 +58,9 @@ export default function AdminPage() {
 
   return (
     <>
-      <PageHeader title="Admin" subtitle="Invite users, run seed data, manage access." />
+      <PageHeader title="Admin" subtitle="Invite users to The Grid." />
 
-      <Card className="mb-6">
+      <Card>
         <CardTitle>Invite User</CardTitle>
         <CardContent className="mt-4">
           <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
@@ -77,7 +74,7 @@ export default function AdminPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-md border border-sls-sand px-3 py-2 focus:border-sls-gold focus:outline-none"
-                placeholder="cshore@southernlightingsource.com"
+                placeholder="name@company.com"
               />
             </label>
 
@@ -90,7 +87,7 @@ export default function AdminPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full rounded-md border border-sls-sand px-3 py-2 focus:border-sls-gold focus:outline-none"
-                placeholder="Cape Shore"
+                placeholder="Full name"
               />
             </label>
 
@@ -147,46 +144,6 @@ export default function AdminPage() {
               )}
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardTitle>Demo Data</CardTitle>
-        <CardContent className="mt-4 flex items-center gap-4">
-          <div className="text-sm">
-            Demo projects in DB:{" "}
-            <span className="font-semibold">{seedStatus.data?.demoProjects ?? "—"}</span>
-          </div>
-          <div className="ml-auto flex gap-2">
-            <Button
-              onClick={async () => {
-                if (!confirm("Load demo dataset?")) return;
-                await loadSeed.mutateAsync();
-                await utils.seed.status.invalidate();
-              }}
-            >
-              Load Demo Data
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                if (!confirm("Clear ALL records tagged [DEMO]?")) return;
-                await clearSeed.mutateAsync();
-                await utils.seed.status.invalidate();
-              }}
-            >
-              Clear Demo Data
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardTitle>User Management</CardTitle>
-        <CardContent className="mt-4 text-sm text-sls-dark-brown/70">
-          Use the form above to invite users. To change a role on an existing user,
-          call the <code>users.updateRole</code> tRPC mutation. A full management UI is
-          on the roadmap.
         </CardContent>
       </Card>
     </>
