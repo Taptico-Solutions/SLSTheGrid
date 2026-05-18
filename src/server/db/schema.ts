@@ -62,6 +62,12 @@ export const documentCategoryEnum = pgEnum("document_category", [
   "contract",
   "photo",
   "other",
+  // Added 2026-05-14 to match Supabase enum: case studies, story bank, SOW, brand and marketing assets.
+  "case_study",
+  "story_bank",
+  "sow",
+  "brand_asset",
+  "marketing_material",
 ]);
 
 export const milestoneStatusEnum = pgEnum("milestone_status", [
