@@ -1,13 +1,7 @@
 import { SLSLayout } from "@/components/SLSLayout";
-import { AskTheGrid } from "@/components/AskTheGrid";
-import { OnboardingTour } from "@/components/OnboardingTour";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <SLSLayout>
-      {children}
-      <AskTheGrid />
-      <OnboardingTour />
-    </SLSLayout>
-  );
+  // Floating AI bot and OnboardingTour deferred until LLM env vars and tour
+  // copy are aligned with the current feature set. Re-enable later.
+  return <SLSLayout>{children}</SLSLayout>;
 }

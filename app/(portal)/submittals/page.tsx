@@ -1,11 +1,13 @@
-import { PageStub } from "@/components/PageStub";
+import { PageHeader, EmptyState } from "@/components/SLSComponents";
 
 export default function SubmittalsPage() {
   return (
-    <PageStub
-      title="Submittals"
-      subtitle="Cross-project submittal workflow tracker."
-      spec="8.6"
-    />
+    <>
+      <PageHeader title="Submittals" subtitle="Coming soon to The Grid." />
+      <EmptyState
+        title="Not yet"
+        description="This area is on the roadmap. Reach out to Nick at nick@taptico.com if you want to push it up the queue."
+      />
+    </>
   );
 }

@@ -50,13 +50,11 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: "Projects", href: "/projects", icon: FolderKanban },
       { label: "Documents", href: "/documents", icon: FileText },
-      { label: "Submittals", href: "/submittals", icon: CheckSquare },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Budget", href: "/budget", icon: DollarSign, roles: [...INTERNAL, "client_architect"] },
       { label: "Timeline", href: "/timeline", icon: CalendarDays },
     ],
   },
@@ -72,8 +70,6 @@ const SECTIONS: NavSection[] = [
     label: "Tools",
     items: [
       { label: "Notifications", href: "/notifications", icon: Bell },
-      { label: "AI Copilot", href: "/copilot", icon: Sparkles },
-      { label: "Reports", href: "/reports", icon: BarChart3, roles: INTERNAL },
     ],
   },
   {

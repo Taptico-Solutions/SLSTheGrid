@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Spec §8.1 — split-panel login.
- * Magic-link first; Google OAuth as a secondary option. Friendly copy.
+ * Magic-link only. No password.
  */
 export default function LoginForm() {
   const search = useSearchParams();
@@ -33,21 +33,6 @@ export default function LoginForm() {
     setLoading(false);
     if (err) setError(err.message);
     else setSent(true);
-  };
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    setError(null);
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (err) {
-      setLoading(false);
-      setError(err.message);
-    }
   };
 
   return (
@@ -129,21 +114,6 @@ export default function LoginForm() {
                   Email me a sign-in link
                 </Button>
               </form>
-
-              <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-sls-dark-brown/40">
-                <div className="h-px flex-1 bg-sls-sand" />
-                or
-                <div className="h-px flex-1 bg-sls-sand" />
-              </div>
-
-              <Button
-                disabled={loading}
-                onClick={signInWithGoogle}
-                className="w-full"
-                variant="solid"
-              >
-                Sign in with Google
-              </Button>
 
               {error && (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700">
