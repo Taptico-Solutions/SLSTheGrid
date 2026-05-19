@@ -6,7 +6,7 @@ import {
   projectTeam,
   INTERNAL_ROLES,
 } from "../db/schema";
-import { eq, inArray, desc } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadDocument, signedDocumentUrl } from "../storage";
 import { nanoid } from "nanoid";
@@ -44,14 +44,21 @@ export const documentsRouter = router({
           .orderBy(desc(documents.createdAt));
       }
 
+      // Internal roles see everything, including unattached vault docs.
       if (ids === null) {
         return ctx.db.select().from(documents).orderBy(desc(documents.createdAt));
       }
-      if (ids.length === 0) return [];
+      // External users see docs in their projects plus their own unattached uploads.
+      const scopedFilter = ids.length > 0
+        ? or(
+            inArray(documents.projectId, ids),
+            and(isNull(documents.projectId), eq(documents.uploadedBy, ctx.user.id)),
+          )
+        : and(isNull(documents.projectId), eq(documents.uploadedBy, ctx.user.id));
       return ctx.db
         .select()
         .from(documents)
-        .where(inArray(documents.projectId, ids))
+        .where(scopedFilter)
         .orderBy(desc(documents.createdAt));
     }),
 
@@ -67,7 +74,13 @@ export const documentsRouter = router({
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
 
       const ids = await visibleProjectIdsForDocs(ctx);
-      if (ids !== null && !ids.includes(row.projectId)) {
+      const canSee =
+        ids === null
+          ? true
+          : row.projectId === null
+            ? row.uploadedBy === ctx.user.id
+            : ids.includes(row.projectId);
+      if (!canSee) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -85,7 +98,8 @@ export const documentsRouter = router({
   upload: protectedProcedure
     .input(
       z.object({
-        projectId: z.number().int().positive(),
+        // Unset projectId stores the file in the shared vault (no project link).
+        projectId: z.number().int().positive().nullable().optional(),
         name: z.string().min(1).max(255),
         fileData: z.string(),
         fileType: z.string().max(128),
@@ -94,18 +108,23 @@ export const documentsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const ids = await visibleProjectIdsForDocs(ctx);
-      if (ids !== null && !ids.includes(input.projectId)) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+      const projectId = input.projectId ?? null;
+
+      if (projectId !== null) {
+        const ids = await visibleProjectIdsForDocs(ctx);
+        if (ids !== null && !ids.includes(projectId)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
       }
 
-      const key = `${input.projectId}/${input.category}/${nanoid()}-${input.name}`;
+      const pathPrefix = projectId !== null ? String(projectId) : "_vault";
+      const key = `${pathPrefix}/${input.category}/${nanoid()}-${input.name}`;
       const buffer = Buffer.from(input.fileData, "base64");
       const { url } = await uploadDocument(key, buffer, input.fileType);
       const [row] = await ctx.db
         .insert(documents)
         .values({
-          projectId: input.projectId,
+          projectId,
           name: input.name,
           fileKey: key,
           fileUrl: url,
