@@ -13,8 +13,31 @@ import {
   FileUp,
   MessageSquare,
   ListChecks,
+  CalendarDays,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
+
+const PRIORITY_STATUS_LABEL: Record<string, string> = {
+  on_track: "On track",
+  at_risk: "At risk",
+  blocked: "Blocked",
+  done: "Done",
+};
+
+function priorityStatusClass(status: string) {
+  switch (status) {
+    case "on_track":
+      return "bg-emerald-100 text-emerald-800";
+    case "at_risk":
+      return "bg-amber-100 text-amber-900";
+    case "blocked":
+      return "bg-red-100 text-red-800";
+    case "done":
+      return "bg-gray-100 text-gray-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
 
 function formatDate(d: Date | string | null | undefined) {
   if (!d) return "—";
@@ -32,6 +55,26 @@ export default function DashboardPage() {
   const milestones = trpc.milestones.list.useQuery();
   const documents = trpc.documents.list.useQuery();
   const activity = trpc.activity.list.useQuery();
+  const projects = trpc.projects.list.useQuery();
+
+  // "Most recent active project" = the most recently updated active project
+  // the current user can see.
+  const focusProject = (() => {
+    const list = projects.data ?? [];
+    const active = list.filter((p) => p.status === "active");
+    const pool = active.length > 0 ? active : list;
+    return [...pool].sort((a, b) => {
+      const at = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+      const bt = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+      return bt - at;
+    })[0];
+  })();
+
+  const priorities = trpc.priorities.listByProject.useQuery(
+    { projectId: focusProject?.id ?? -1 },
+    { enabled: !!focusProject?.id },
+  );
+  const topPriorities = (priorities.data ?? []).slice(0, 3);
 
   const unread = notifications.data?.filter((n) => !n.isRead).length ?? 0;
   const openMilestones = (milestones.data ?? []).filter(
@@ -138,6 +181,89 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {focusProject && (
+        <Card className="mt-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Top Priorities This Period</CardTitle>
+              <div className="mt-1 text-xs text-sls-dark-brown/60">
+                {focusProject.name}
+              </div>
+            </div>
+            <Link
+              href={`/projects/${focusProject.id}/priorities`}
+              className="text-xs uppercase tracking-widest text-sls-gold hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+          <CardContent className="mt-3">
+            {priorities.isLoading ? (
+              <div className="text-sm text-sls-dark-brown/60">Loading…</div>
+            ) : topPriorities.length === 0 ? (
+              <EmptyState
+                title="No priorities yet"
+                description="Your project admin can add priorities to track the work in flight."
+              />
+            ) : (
+              <ul className="divide-y divide-sls-sand">
+                {topPriorities.map((p, idx) => {
+                  const total = p.tasks.length;
+                  const done = p.tasks.filter((t) => t.isDone).length;
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                  return (
+                    <li key={p.id} className="py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <span className="font-slab text-sls-gold">
+                            {String(idx + 1).padStart(2, "0")}
+                          </span>
+                          <span className="truncate font-medium text-sls-dark-brown">
+                            {p.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-sls-dark-brown/60">
+                          <span
+                            className={
+                              "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold " +
+                              priorityStatusClass(p.status)
+                            }
+                          >
+                            {PRIORITY_STATUS_LABEL[p.status] ?? p.status}
+                          </span>
+                          {p.targetDate && (
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              {formatDate(p.targetDate)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {total > 0 && (
+                        <div className="mt-2">
+                          <div className="mb-1 flex items-center justify-between text-xs text-sls-dark-brown/60">
+                            <span>
+                              {done} of {total}
+                            </span>
+                            <span>{pct}%</span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-sls-sand">
+                            <div
+                              className="h-full rounded-full bg-sls-gold"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>

@@ -19,6 +19,7 @@ import { onboardingRouter } from "./onboarding";
 import { copilotRouter } from "./copilot";
 import { gridChatRouter } from "./gridChat";
 import { seedRouter } from "./seed";
+import { prioritiesRouter } from "./priorities";
 
 export const appRouter = router({
   auth: authRouter,
@@ -41,6 +42,7 @@ export const appRouter = router({
   copilot: copilotRouter,
   gridChat: gridChatRouter,
   seed: seedRouter,
+  priorities: prioritiesRouter,
 });
 
 export type AppRouter = typeof appRouter;

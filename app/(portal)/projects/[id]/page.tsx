@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc/client";
 import { OverviewTab } from "@/components/project-detail/OverviewTab";
+import { PrioritiesTab } from "@/components/project-detail/PrioritiesTab";
 import { ProductsTab } from "@/components/project-detail/ProductsTab";
 import { TimelineTab } from "@/components/project-detail/TimelineTab";
 import { BudgetTab } from "@/components/project-detail/BudgetTab";
@@ -19,6 +20,7 @@ import { ArrowLeft } from "lucide-react";
 
 const TABS = [
   "overview",
+  "priorities",
   "products",
   "timeline",
   "budget",
@@ -84,6 +86,7 @@ export default function ProjectDetailPage() {
       <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="priorities">Priorities</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="budget">Budget</TabsTrigger>
@@ -95,6 +98,9 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="overview">
           <OverviewTab project={p} />
+        </TabsContent>
+        <TabsContent value="priorities">
+          <PrioritiesTab projectId={p.id} />
         </TabsContent>
         <TabsContent value="products">
           <ProductsTab projectId={p.id} />

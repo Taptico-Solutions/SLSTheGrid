@@ -15,6 +15,8 @@ import {
   boolean,
   timestamp,
   decimal,
+  uuid,
+  date,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -122,6 +124,13 @@ export const toolRequestStatusEnum = pgEnum("tool_request_status", [
   "declined",
   "in_progress",
   "shipped",
+]);
+
+export const priorityStatusEnum = pgEnum("priority_status", [
+  "on_track",
+  "at_risk",
+  "blocked",
+  "done",
 ]);
 
 // ─── 4.1 users ────────────────────────────────────────────────────────────
@@ -420,6 +429,48 @@ export const toolRequests = pgTable("tool_requests", {
 });
 
 export type ToolRequest = typeof toolRequests.$inferSelect;
+
+// ─── priorities + priority_tasks (engagement tracker) ──────────────────────
+export const priorities = pgTable("priorities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  priorityOrder: integer("priority_order").notNull().default(0),
+  status: priorityStatusEnum("status").notNull().default("on_track"),
+  targetDate: date("target_date"),
+  ownerUserId: integer("owner_user_id").references(() => users.id),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const priorityTasks = pgTable("priority_tasks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  priorityId: uuid("priority_id").notNull().references(() => priorities.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  isDone: boolean("is_done").notNull().default(false),
+  taskOrder: integer("task_order").notNull().default(0),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  completedBy: uuid("completed_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prioritiesRelations = relations(priorities, ({ one, many }) => ({
+  project: one(projects, { fields: [priorities.projectId], references: [projects.id] }),
+  owner: one(users, { fields: [priorities.ownerUserId], references: [users.id] }),
+  tasks: many(priorityTasks),
+}));
+
+export const priorityTasksRelations = relations(priorityTasks, ({ one }) => ({
+  priority: one(priorities, { fields: [priorityTasks.priorityId], references: [priorities.id] }),
+}));
+
+export type Priority = typeof priorities.$inferSelect;
+export type NewPriority = typeof priorities.$inferInsert;
+export type PriorityTask = typeof priorityTasks.$inferSelect;
+export type NewPriorityTask = typeof priorityTasks.$inferInsert;
+export type PriorityStatus = typeof priorityStatusEnum.enumValues[number];
 
 // ─── Convenience types ───────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
