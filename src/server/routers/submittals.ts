@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
-import { submittals, notifications } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { submittals, notifications, users, documents } from "../db/schema";
+import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 const SubmittalInput = z.object({
@@ -28,10 +28,34 @@ export const submittalsRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive().optional() }).optional())
     .query(({ ctx, input }) => {
+      const base = ctx.db
+        .select({
+          id: submittals.id,
+          projectId: submittals.projectId,
+          documentId: submittals.documentId,
+          title: submittals.title,
+          description: submittals.description,
+          status: submittals.status,
+          comments: submittals.comments,
+          revisionNumber: submittals.revisionNumber,
+          dueDate: submittals.dueDate,
+          reviewedAt: submittals.reviewedAt,
+          createdAt: submittals.createdAt,
+          updatedAt: submittals.updatedAt,
+          submittedBy: submittals.submittedBy,
+          reviewedBy: submittals.reviewedBy,
+          submitterName: users.name,
+          submitterEmail: users.email,
+          documentName: documents.name,
+        })
+        .from(submittals)
+        .leftJoin(users, eq(users.id, submittals.submittedBy))
+        .leftJoin(documents, eq(documents.id, submittals.documentId))
+        .orderBy(desc(submittals.createdAt));
       if (input?.projectId) {
-        return ctx.db.select().from(submittals).where(eq(submittals.projectId, input.projectId));
+        return base.where(eq(submittals.projectId, input.projectId));
       }
-      return ctx.db.select().from(submittals);
+      return base;
     }),
 
   get: protectedProcedure

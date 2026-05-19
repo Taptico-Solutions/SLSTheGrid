@@ -17,12 +17,21 @@ export async function createContext(_opts: FetchCreateContextFnOptions) {
 
   let user: User | null = null;
   if (supaUser) {
-    const [row] = await db
-      .select()
-      .from(users)
-      .where(eq(users.openId, supaUser.id))
-      .limit(1);
-    user = row ?? null;
+    try {
+      const [row] = await db
+        .select()
+        .from(users)
+        .where(eq(users.openId, supaUser.id))
+        .limit(1);
+      user = row ?? null;
+    } catch (err) {
+      // A DB outage here would otherwise crash every tRPC call with an opaque
+      // 500. Log loudly and treat the session as unauthenticated so the
+      // protected procedures return UNAUTHORIZED (which the client can render)
+      // instead of INTERNAL_SERVER_ERROR.
+      console.error("[context] users lookup failed:", err);
+      user = null;
+    }
   }
 
   return { db, user };

@@ -28,7 +28,28 @@ export default function AdminPage() {
   const [projectIds, setProjectIds] = useState<number[]>([]);
   const [sent, setSent] = useState<string | null>(null);
 
-  if (!me.data) return null;
+  if (me.isLoading) {
+    return <div className="text-sm text-sls-dark-brown/60">Loading…</div>;
+  }
+  if (me.error) {
+    return (
+      <div className="space-y-1 text-sm text-red-700">
+        <div className="font-semibold">Could not load your session.</div>
+        <div className="text-xs">{me.error.message}</div>
+      </div>
+    );
+  }
+  if (!me.data) {
+    return (
+      <div className="text-sm text-sls-dark-brown/70">
+        You appear to be signed out.{" "}
+        <a href="/login" className="text-sls-gold underline">
+          Sign in
+        </a>{" "}
+        to continue.
+      </div>
+    );
+  }
   if (me.data.role !== "admin" && me.data.role !== "sls_admin") {
     return <div className="text-sm text-red-600">Forbidden.</div>;
   }

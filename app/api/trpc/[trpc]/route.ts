@@ -10,9 +10,15 @@ const handler = (req: Request) =>
     req,
     router: appRouter,
     createContext,
-    onError({ error, path }) {
-      if (process.env.NODE_ENV === "development") {
-        console.error(`tRPC failed on ${path ?? "?"}:`, error);
+    onError({ error, path, type }) {
+      // Log every server-side failure (prod + dev). INTERNAL_SERVER_ERROR is
+      // what surfaces as a 500 to the client; the underlying cause is on
+      // error.cause. Keep the line greppable in Vercel.
+      console.error(
+        `[trpc] ${type} ${path ?? "?"} → ${error.code}: ${error.message}`,
+      );
+      if (error.cause) {
+        console.error("[trpc] cause:", error.cause);
       }
     },
   });
