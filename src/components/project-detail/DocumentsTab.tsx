@@ -10,17 +10,17 @@ import { formatDate } from "./shared";
 import { useState } from "react";
 
 const CATEGORY_LABEL: Record<string, string> = {
-  case_study: "Case Study",
+  case_study: "Case Studies",
   story_bank: "Story Bank",
-  sow: "SOW",
-  contract: "Contract",
-  brand_asset: "Brand Asset",
-  marketing_material: "Marketing",
-  submittal: "Submittal",
-  spec_sheet: "Spec Sheet",
-  cut_sheet: "Cut Sheet",
-  as_built: "As-Built",
-  photo: "Photo",
+  sow: "Statement of Work",
+  contract: "Contracts",
+  brand_asset: "Brand Assets",
+  marketing_material: "Marketing Materials",
+  submittal: "Submittals",
+  spec_sheet: "Spec Sheets",
+  cut_sheet: "Cut Sheets",
+  as_built: "As-Builts",
+  photo: "Photos",
   other: "Other",
 };
 
