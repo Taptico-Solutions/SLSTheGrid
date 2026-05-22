@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 export default function LoginForm() {
   const search = useSearchParams();
   const supabase = createSupabaseBrowserClient();
+  const next = search.get("next") ?? "/";
+  const callbackError = search.get("error");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const next = search.get("next") ?? "/";
+  const [error, setError] = useState<string | null>(callbackError);
 
   const signInWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
