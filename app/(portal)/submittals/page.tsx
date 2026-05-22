@@ -1,12 +1,12 @@
-import { PageHeader, EmptyState } from "@/components/SLSComponents";
+import { PageHeader, ComingSoon } from "@/components/SLSComponents";
 
 export default function SubmittalsPage() {
   return (
     <>
-      <PageHeader title="Submittals" subtitle="Coming soon to The Grid." />
-      <EmptyState
-        title="Not yet"
-        description="This area is on the roadmap. Reach out to Nick at nick@taptico.com if you want to push it up the queue."
+      <PageHeader title="Submittals" subtitle="Spec, cut, and shop-drawing review log." />
+      <ComingSoon
+        feature="Submittals"
+        description="Submittal tracking with approval routing and a per-project log. You can already attach submittal PDFs in Documents today."
       />
     </>
   );

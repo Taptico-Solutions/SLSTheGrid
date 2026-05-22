@@ -1,12 +1,12 @@
-import { PageHeader, EmptyState } from "@/components/SLSComponents";
+import { PageHeader, ComingSoon } from "@/components/SLSComponents";
 
 export default function ReportsPage() {
   return (
     <>
-      <PageHeader title="Reports" subtitle="Coming soon to The Grid." />
-      <EmptyState
-        title="Not yet"
-        description="This area is on the roadmap. Reach out to Nick at nick@taptico.com if you want to push it up the queue."
+      <PageHeader title="Reports" subtitle="Portfolio rollups, status reports, and exports." />
+      <ComingSoon
+        feature="Reports"
+        description="Cross-project status reports, exportable summaries, and AI-drafted executive briefs."
       />
     </>
   );

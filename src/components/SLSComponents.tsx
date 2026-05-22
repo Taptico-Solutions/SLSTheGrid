@@ -72,3 +72,24 @@ export function EmptyState({
     </div>
   );
 }
+
+export function ComingSoon({
+  feature,
+  description,
+}: {
+  feature: string;
+  description?: string;
+}) {
+  return (
+    <div className="sls-card flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <span className="rounded-full border border-sls-gold/40 bg-sls-gold-pale px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sls-gold">
+        Coming Soon
+      </span>
+      <h3 className="font-slab text-2xl uppercase text-sls-dark-brown">{feature}</h3>
+      <p className="max-w-md text-sm text-sls-dark-brown/70">
+        {description ??
+          "This area is on the roadmap. Ping Nick at nick@taptico.com to push it up the queue."}
+      </p>
+    </div>
+  );
+}

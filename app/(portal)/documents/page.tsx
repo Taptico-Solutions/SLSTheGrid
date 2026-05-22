@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader, EmptyState } from "@/components/SLSComponents";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,16 +104,8 @@ export default function DocumentsPage() {
   const [opening, setOpening] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
-  const [defaultProjectId, setDefaultProjectId] = useState<number | null>(null);
-
-  // Default project: the SLS x Taptico engagement workspace if present.
-  useEffect(() => {
-    if (defaultProjectId !== null || !projects.data?.length) return;
-    const eng = projects.data.find((p) =>
-      p.name.toLowerCase().includes("taptico"),
-    );
-    setDefaultProjectId(eng?.id ?? projects.data[0].id);
-  }, [projects.data, defaultProjectId]);
+  // Files default to the shared vault (no project). Users can opt in to
+  // tag a specific project on a per-row basis.
 
   const docs = list.data ?? [];
   const grouped = useMemo(
@@ -125,8 +117,10 @@ export default function DocumentsPage() {
     [docs],
   );
 
-  const projectName = (id: number) =>
-    projects.data?.find((p) => p.id === id)?.name ?? `Project ${id}`;
+  const projectName = (id: number | null) => {
+    if (id === null) return "Vault · unattached";
+    return projects.data?.find((p) => p.id === id)?.name ?? `Project ${id}`;
+  };
 
   const open = async (id: number) => {
     setOpening(id);
@@ -150,7 +144,7 @@ export default function DocumentsPage() {
       file,
       name: file.name.replace(/\.[^.]+$/, ""),
       category: inferCategoryFromName(file.name),
-      projectId: defaultProjectId,
+      projectId: null,
       status: "pending",
     }));
     setRows((prev) => [...prev, ...next]);
@@ -176,10 +170,6 @@ export default function DocumentsPage() {
     const inFlight = new Set<Promise<void>>();
 
     const runOne = async (row: Row) => {
-      if (!row.projectId) {
-        updateRow(row.id, { status: "error", error: "Pick a project first." });
-        return;
-      }
       if (row.file.size > MAX_BYTES) {
         updateRow(row.id, {
           status: "error",
@@ -191,7 +181,7 @@ export default function DocumentsPage() {
       try {
         const fileData = await readFileAsBase64(row.file);
         await upload.mutateAsync({
-          projectId: row.projectId,
+          projectId: row.projectId ?? undefined,
           name: row.name || row.file.name,
           fileData,
           fileType: row.file.type || "application/octet-stream",
@@ -424,8 +414,9 @@ export default function DocumentsPage() {
                           }
                           disabled={r.status !== "pending" && r.status !== "error"}
                           className="rounded-md border border-sls-sand px-2 py-1.5 text-sm focus:border-sls-gold focus:outline-none disabled:bg-sls-sand/30"
+                          title="Optional - leave as Vault to store without tying to a project"
                         >
-                          <option value="">Pick a project</option>
+                          <option value="">Vault (no project)</option>
                           {projects.data?.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.name}

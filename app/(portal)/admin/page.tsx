@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PageHeader } from "@/components/SLSComponents";
+import { PageHeader, EmptyState } from "@/components/SLSComponents";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
@@ -29,29 +29,81 @@ export default function AdminPage() {
   const [sent, setSent] = useState<string | null>(null);
 
   if (me.isLoading) {
-    return <div className="text-sm text-sls-dark-brown/60">Loading…</div>;
+    return (
+      <>
+        <PageHeader title="Admin" subtitle="Invite users to The Grid." />
+        <div className="text-sm text-sls-dark-brown/60">Loading…</div>
+      </>
+    );
   }
   if (me.error) {
+    // UNAUTHORIZED almost always means createContext could not look the
+    // signed-in user up in public.users — usually a DATABASE_URL misconfig.
+    const isUnauthorized = me.error.data?.code === "UNAUTHORIZED";
     return (
-      <div className="space-y-1 text-sm text-red-700">
-        <div className="font-semibold">Could not load your session.</div>
-        <div className="text-xs">{me.error.message}</div>
-      </div>
+      <>
+        <PageHeader title="Admin" subtitle="Invite users to The Grid." />
+        <Card>
+          <CardTitle>Session error</CardTitle>
+          <CardContent className="mt-3 space-y-3 text-sm">
+            <div className="text-red-700">
+              <span className="font-semibold">{me.error.message}</span>
+            </div>
+            {isUnauthorized ? (
+              <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="font-semibold uppercase tracking-widest">
+                  Likely cause
+                </div>
+                <p>
+                  The server could not look your user up in the database.
+                  This is almost always a misconfigured <code>DATABASE_URL</code>{" "}
+                  on Vercel — confirm the username portion includes the
+                  Supabase project ref (e.g. <code>postgres.&lt;project-ref&gt;</code>)
+                  and points at the transaction pooler on port 6543. Then
+                  redeploy without build cache.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-sls-sand bg-sls-off-white p-3 text-xs text-sls-dark-brown/70">
+                Check the Vercel runtime logs for the matching{" "}
+                <code>[trpc] query auth.me</code> error line for the underlying
+                cause.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </>
     );
   }
   if (!me.data) {
     return (
-      <div className="text-sm text-sls-dark-brown/70">
-        You appear to be signed out.{" "}
-        <a href="/login" className="text-sls-gold underline">
-          Sign in
-        </a>{" "}
-        to continue.
-      </div>
+      <>
+        <PageHeader title="Admin" subtitle="Invite users to The Grid." />
+        <EmptyState
+          title="You appear to be signed out"
+          description="Sign in to continue."
+          action={
+            <a
+              href="/login"
+              className="inline-flex items-center rounded-md bg-sls-gold px-4 py-2 text-sm font-medium text-white"
+            >
+              Sign in
+            </a>
+          }
+        />
+      </>
     );
   }
   if (me.data.role !== "admin" && me.data.role !== "sls_admin") {
-    return <div className="text-sm text-red-600">Forbidden.</div>;
+    return (
+      <>
+        <PageHeader title="Admin" subtitle="Invite users to The Grid." />
+        <EmptyState
+          title="Admins only"
+          description={`Your current role is ${me.data.role}. Ask an admin to elevate your access if you need invite permissions.`}
+        />
+      </>
+    );
   }
 
   const toggleProject = (id: number) => {

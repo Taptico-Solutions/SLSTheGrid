@@ -218,9 +218,11 @@ export const products = pgTable("products", {
 });
 
 // ─── 4.6 documents ────────────────────────────────────────────────────────
+// projectId is nullable so internal teams can stash documents in a shared
+// vault without tying them to a specific project.
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   fileKey: varchar("file_key", { length: 500 }).notNull(),
   fileUrl: text("file_url").notNull(),
