@@ -20,7 +20,7 @@ import {
   submittals,
   users,
 } from "../drizzle/schema";
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
@@ -358,6 +358,24 @@ const documentsRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(documents).where(eq(documents.id, input.id));
       return { success: true };
+    }),
+
+  getBulkDownloadUrls: protectedProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1).max(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await db
+        .select({ id: documents.id, name: documents.name, fileUrl: documents.fileUrl, fileName: documents.fileName, mimeType: documents.mimeType })
+        .from(documents)
+        .where(inArray(documents.id, input.ids));
+      return rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        fileUrl: r.fileUrl,
+        fileName: r.fileName ?? r.name,
+        mimeType: r.mimeType ?? "application/octet-stream",
+      }));
     }),
 });
 

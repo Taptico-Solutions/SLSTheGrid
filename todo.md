@@ -72,3 +72,13 @@
 - [x] Ensure document type is saved to the documents table on upload (Zod enum + DB enum updated)
 - [x] Write/update tests for document upload router (18/18 passing)
 - [x] Save checkpoint and deliver
+
+## Feature: Bulk Document Download (Zip Export)
+- [x] Add documents.getBulkDownloadUrls tRPC procedure (returns fileUrl + fileName for given IDs)
+- [x] Install jszip on the client for in-browser zip generation
+- [x] Add checkbox column to Document Vault table with Select All toggle
+- [x] Add "Download Selected (N)" action bar that appears when files are selected
+- [x] Implement zip generation: fetch each file, add to JSZip, trigger browser download
+- [x] Show progress indicator during zip generation
+- [x] Write tests for getBulkDownloadUrls procedure
+- [x] Save checkpoint and deliver
