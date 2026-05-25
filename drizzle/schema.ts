@@ -176,6 +176,8 @@ export const documents = mysqlTable("documents", {
     "as_built",
     "warranty",
     "field_photo",
+    "marketing_materials",
+    "case_study",
     "other",
   ]).default("other"),
   fileUrl: text("fileUrl").notNull(),

@@ -315,7 +315,7 @@ const documentsRouter = router({
     .input(z.object({
       projectId: z.number().optional(),
       name: z.string(),
-      type: z.enum(["spec_sheet", "submittal", "approval", "change_order", "invoice", "cut_sheet", "as_built", "warranty", "field_photo", "other"]),
+      type: z.enum(["spec_sheet", "submittal", "approval", "change_order", "invoice", "cut_sheet", "as_built", "warranty", "field_photo", "marketing_materials", "case_study", "other"]),
       fileDataBase64: z.string(),
       fileName: z.string(),
       mimeType: z.string(),

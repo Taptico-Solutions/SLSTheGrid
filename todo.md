@@ -63,3 +63,12 @@
 - [x] Wire search trigger button into SLSLayout sidebar
 - [x] Write tests for search procedure
 - [x] Save checkpoint and deliver
+
+## Bug Fix + Feature: Document Upload & Type Selector
+- [x] Diagnose file upload error from server/browser logs
+- [x] Fix root cause of upload failure — replaced FileReader with arrayBuffer+btoa, added try/catch/finally, added file size validation
+- [x] Add document type selector to upload form (dropdown with human-readable labels)
+- [x] Include all existing types plus: Marketing Materials, Case Studies
+- [x] Ensure document type is saved to the documents table on upload (Zod enum + DB enum updated)
+- [x] Write/update tests for document upload router (18/18 passing)
+- [x] Save checkpoint and deliver
