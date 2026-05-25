@@ -44,7 +44,21 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      // If the OAuth state encodes an invite token, redirect there after sign-in
+      let redirectTo = "/";
+      try {
+        const decoded = Buffer.from(state, "base64").toString("utf8");
+        // state format: "<redirectUri>|invite:<token>" or just "<redirectUri>"
+        const parts = decoded.split("|");
+        if (parts.length === 2 && parts[1].startsWith("invite:")) {
+          const inviteToken = parts[1].slice(7);
+          redirectTo = `/invite/${inviteToken}`;
+        }
+      } catch {
+        // ignore malformed state — just redirect to home
+      }
+
+      res.redirect(302, redirectTo);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });

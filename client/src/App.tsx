@@ -22,6 +22,7 @@ import Copilot from "./pages/Copilot";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import InviteAccept from "./pages/InviteAccept";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function Router() {
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         <Route path="/admin" component={Admin} />
+        <Route path="/invite/:token" component={InviteAccept} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

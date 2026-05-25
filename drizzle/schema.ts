@@ -354,3 +354,29 @@ export const activityLog = mysqlTable("activity_log", {
 });
 
 export type ActivityLog = typeof activityLog.$inferSelect;
+
+// ─── Invite Tokens ────────────────────────────────────────────────────────────
+export const inviteTokens = mysqlTable("invite_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  inviteCode: varchar("inviteCode", { length: 128 }).notNull(),
+  role: mysqlEnum("role", [
+    "sls_admin",
+    "sls_rep",
+    "sls_pm",
+    "client_architect",
+    "client_gc",
+    "user",
+  ])
+    .default("user")
+    .notNull(),
+  label: varchar("label", { length: 255 }),
+  createdBy: int("createdBy").notNull(),
+  usedBy: int("usedBy"),
+  expiresAt: timestamp("expiresAt"),
+  usedAt: timestamp("usedAt"),
+  isRevoked: boolean("isRevoked").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type InviteToken = typeof inviteTokens.$inferSelect;
+export type InsertInviteToken = typeof inviteTokens.$inferInsert;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageHeader, EmptyState, LoadingSpinner } from "@/components/SLSComponents";
@@ -13,6 +13,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Link2,
+  Copy,
+  XCircle,
+  KeyRound,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +33,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const ROLES = ["user", "sls_admin", "sls_rep", "sls_pm", "client_architect", "client_gc"];
 const ROLE_LABELS: Record<string, string> = {
@@ -49,6 +57,52 @@ export default function Admin() {
 
   const { data: members, isLoading, refetch } = trpc.team.listAll.useQuery();
   const { data: seedStatus, refetch: refetchSeed } = trpc.seed.status.useQuery();
+
+  // ── Invite state ──────────────────────────────────────────────────────────
+  const [inviteRole, setInviteRole] = useState<string>("user");
+  const [inviteLabel, setInviteLabel] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteExpiry, setInviteExpiry] = useState("30");
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: inviteList, refetch: refetchInvites } = trpc.invites.list.useQuery();
+
+  const createInvite = trpc.invites.create.useMutation({
+    onSuccess: (data) => {
+      setGeneratedUrl(data.inviteUrl);
+      refetchInvites();
+      setInviteLabel("");
+      setInviteCode("");
+      setInviteRole("user");
+      setInviteExpiry("30");
+      toast.success("Invite link created!");
+    },
+    onError: (err) => toast.error("Failed to create invite", { description: err.message }),
+  });
+
+  const revokeInvite = trpc.invites.revoke.useMutation({
+    onSuccess: () => { refetchInvites(); toast.success("Invite revoked."); },
+    onError: () => toast.error("Failed to revoke invite"),
+  });
+
+  function handleCreateInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteCode.trim()) { toast.error("Invite code is required."); return; }
+    createInvite.mutate({
+      role: inviteRole as any,
+      label: inviteLabel || undefined,
+      inviteCode: inviteCode.trim(),
+      expiresInDays: parseInt(inviteExpiry) || 30,
+      origin: window.location.origin,
+    });
+  }
+
+  function copyUrl(url: string) {
+    navigator.clipboard.writeText(url);
+    toast.success("Invite link copied to clipboard!");
+  }
 
   const updateRole = trpc.users.updateRole.useMutation({
     onSuccess: () => { refetch(); setEditingId(null); toast.success("Role updated"); },
@@ -293,6 +347,157 @@ export default function Admin() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* ── Invite Management Section ─────────────────────────────────────── */}
+        <div className="sls-card">
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e8e3d8" }}>
+            <div className="flex items-center gap-3">
+              <UserPlus size={18} style={{ color: "#d29c3c" }} />
+              <span style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "15px", color: "#1b110b" }}>Invite Management</span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => { setShowInviteForm(v => !v); setGeneratedUrl(null); }}
+              style={{ background: "#d29c3c", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}
+            >
+              <UserPlus size={13} className="mr-1.5" /> New Invite
+            </Button>
+          </div>
+
+          {/* Create invite form */}
+          {showInviteForm && (
+            <div className="px-5 py-5 border-b" style={{ borderColor: "#e8e3d8", background: "#fdf8ef" }}>
+              {generatedUrl ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-[#1b110b]" style={{ fontFamily: "Inter, sans-serif" }}>Invite link generated — share this with your invitee:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      ref={urlInputRef}
+                      readOnly
+                      value={generatedUrl}
+                      className="text-xs font-mono bg-white border-[#e6dec2]"
+                      onClick={() => urlInputRef.current?.select()}
+                    />
+                    <Button size="sm" variant="outline" className="border-[#d29c3c] text-[#d29c3c] hover:bg-[#d29c3c] hover:text-white flex-shrink-0" onClick={() => copyUrl(generatedUrl)}>
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500" style={{ fontFamily: "Inter, sans-serif" }}>The invitee will also need the invite code you set — share that separately (e.g. via email or phone).</p>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => { setGeneratedUrl(null); setShowInviteForm(false); }}>Done</Button>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateInvite} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Label (optional)</Label>
+                    <Input placeholder="e.g. Claire Fontaine — BKSK" value={inviteLabel} onChange={e => setInviteLabel(e.target.value)} className="text-sm border-[#e6dec2]" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Role</Label>
+                    <Select value={inviteRole} onValueChange={setInviteRole}>
+                      <SelectTrigger className="text-sm border-[#e6dec2]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["user","sls_rep","sls_pm","client_architect","client_gc","sls_admin"].map(r => (
+                          <SelectItem key={r} value={r} className="text-xs">{ROLE_LABELS[r] ?? r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Invite Code <span className="text-red-500">*</span></Label>
+                    <div className="relative">
+                      <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="Set a password for this invite"
+                        value={inviteCode}
+                        onChange={e => setInviteCode(e.target.value)}
+                        className="pl-8 text-sm border-[#e6dec2]"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Share this code separately from the link.</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Expires in (days)</Label>
+                    <Input type="number" min={1} max={365} value={inviteExpiry} onChange={e => setInviteExpiry(e.target.value)} className="text-sm border-[#e6dec2]" />
+                  </div>
+                  <div className="sm:col-span-2 flex gap-2">
+                    <Button type="submit" disabled={createInvite.isPending} style={{ background: "#d29c3c", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {createInvite.isPending ? <><Loader2 size={13} className="mr-1.5 animate-spin" /> Generating…</> : <><Link2 size={13} className="mr-1.5" /> Generate Link</>}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setShowInviteForm(false)}>Cancel</Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Invite list */}
+          <div className="overflow-x-auto">
+            {!inviteList || inviteList.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-gray-400" style={{ fontFamily: "Inter, sans-serif" }}>No invites created yet.</div>
+            ) : (
+              <table className="w-full text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e8e3d8", background: "#fdf8ef" }}>
+                    {["Label / Role", "Status", "Expires", "Used By", ""].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left" style={{ fontSize: "11px", fontWeight: 600, color: "#7a6e62", textTransform: "uppercase", letterSpacing: "0.07em" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {inviteList.map(inv => {
+                    const expired = inv.expiresAt && new Date(inv.expiresAt) < new Date();
+                    const status = inv.isRevoked ? "revoked" : inv.usedAt ? "used" : expired ? "expired" : "active";
+                    const statusColors: Record<string, string> = { active: "#dcfce7", used: "#dbeafe", expired: "#f3f4f6", revoked: "#fee2e2" };
+                    const statusText: Record<string, string> = { active: "#166534", used: "#1e40af", expired: "#6b7280", revoked: "#991b1b" };
+                    return (
+                      <tr key={inv.id} style={{ borderBottom: "1px solid #f0ece3" }}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-[#1b110b]" style={{ fontSize: "13px" }}>{inv.label || "—"}</div>
+                          <div style={{ fontSize: "11px", color: "#7a6e62" }}>{ROLE_LABELS[inv.role] ?? inv.role}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: statusColors[status], color: statusText[status] }}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "Never"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          {inv.usedByName || inv.usedByEmail || (inv.usedAt ? "Unknown" : "—")}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            {status === "active" && (
+                              <>
+                                <button
+                                  title="Copy invite link"
+                                  className="p-1.5 rounded hover:bg-[#fdf3e0] transition-colors"
+                                  onClick={() => copyUrl(`${window.location.origin}/invite/${inv.token}`)}
+                                >
+                                  <Copy size={13} style={{ color: "#d29c3c" }} />
+                                </button>
+                                <button
+                                  title="Revoke invite"
+                                  className="p-1.5 rounded hover:bg-red-50 transition-colors"
+                                  onClick={() => revokeInvite.mutate({ id: inv.id })}
+                                >
+                                  <XCircle size={13} style={{ color: "#dc2626" }} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
         {/* Info box */}

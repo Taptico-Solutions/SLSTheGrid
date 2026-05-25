@@ -120,6 +120,11 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
     );
   }
 
+  // Invite accept page handles its own auth flow — render without the portal shell
+  if (location.startsWith("/invite/")) {
+    return <>{children}</>;
+  }
+
   if (!isAuthenticated) {
     return <LoginPage />;
   }

@@ -33,5 +33,16 @@
 - [x] Run test suite (1/1 passed)
 
 ## Phase 5: Checkpoint & Delivery
-- [ ] Create checkpoint
-- [ ] Deliver permanent website URL to user
+- [x] Create checkpoint
+- [x] Deliver permanent website URL to user
+
+## Feature: Password-Protected Invite System
+- [x] Add invite_tokens table to drizzle/schema.ts (token, role, inviteCode, createdBy, usedBy, expiresAt, usedAt)
+- [x] Apply invite_tokens migration SQL to the database
+- [x] Build server/routers/invites.ts tRPC router (create, list, revoke, redeem procedures)
+- [x] Register invites router in server/routers.ts
+- [x] Build client/src/pages/InviteAccept.tsx (invite code gate + OAuth redirect)
+- [x] Add /invite/:token route to App.tsx
+- [x] Add Invite Management section to Admin.tsx (generate link, copy, list, revoke)
+- [x] Write vitest tests for invite router
+- [x] Save checkpoint and deliver
