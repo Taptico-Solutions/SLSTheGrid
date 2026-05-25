@@ -1,9 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-heading: "Roboto Slab", Helvetica, Arial, Verdana, sans-serif;
+  --font-sans: "Inter", Helvetica, Arial, Verdana, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -43,75 +47,53 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
+  /* SLS Brand Colors */
+  --sls-gold: #d29c3c;
+  --sls-gold-light: #e6a52d;
+  --sls-gold-pale: #f5e9cc;
+  --sls-dark-brown: #1b110b;
+  --sls-charcoal: #262b2e;
+  --sls-dark-gray: #32323a;
+  --sls-sand: #e6dec2;
+  --sls-off-white: #f9f9f9;
+
+  /* SLS Semantic Tokens */
+  --primary: oklch(0.68 0.12 65);
+  --primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.68 0.12 65);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --chart-1: oklch(0.68 0.12 65);
+  --chart-2: oklch(0.55 0.15 145);
+  --chart-3: oklch(0.75 0.18 75);
+  --chart-4: oklch(0.55 0.22 25);
+  --chart-5: oklch(0.50 0.12 250);
+  --radius: 0.375rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
+  --foreground: oklch(0.12 0.02 50);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
+  --card-foreground: oklch(0.12 0.02 50);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --popover-foreground: oklch(0.12 0.02 50);
+  --secondary: oklch(0.97 0.005 65);
+  --secondary-foreground: oklch(0.20 0.02 50);
+  --muted: oklch(0.96 0.005 65);
+  --muted-foreground: oklch(0.45 0.01 50);
+  --accent: oklch(0.91 0.02 70);
+  --accent-foreground: oklch(0.20 0.02 50);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.90 0.005 65);
+  --input: oklch(0.90 0.005 65);
+  --ring: oklch(0.68 0.12 65);
+  --sidebar: oklch(0.12 0.02 50);
+  --sidebar-foreground: oklch(0.90 0.01 65);
+  --sidebar-accent: oklch(0.18 0.02 50);
+  --sidebar-accent-foreground: oklch(0.90 0.01 65);
+  --sidebar-border: oklch(0.22 0.02 50);
+  --sidebar-ring: oklch(0.68 0.12 65);
 }
 
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
-}
+/* No dark mode for SLS portal - light mode only */
 
 @layer base {
   * {
@@ -119,6 +101,16 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "Inter", Helvetica, Arial, Verdana, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--sls-dark-brown);
+    transition: background-color 0.25s ease, color 0.2s ease;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Roboto Slab", Helvetica, Arial, Verdana, sans-serif;
+    font-weight: 600;
+    color: var(--sls-dark-brown);
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -131,6 +123,51 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
+}
+
+/* ─── SLS Utility Classes ──────────────────────────────────────────────────── */
+
+/* Sun icon watermark pattern for login/empty states */
+.sls-watermark-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='8' fill='none' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='40' y1='10' x2='40' y2='22' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='40' y1='58' x2='40' y2='70' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='10' y1='40' x2='22' y2='40' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='58' y1='40' x2='70' y2='40' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='19' y1='19' x2='27.5' y2='27.5' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='52.5' y1='52.5' x2='61' y2='61' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='61' y1='19' x2='52.5' y2='27.5' stroke='%23cccccc' stroke-width='1.5'/%3E%3Cline x1='27.5' y1='52.5' x2='19' y2='61' stroke='%23cccccc' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 80px 80px;
+}
+
+/* Status badge classes */
+.badge-on-track { background: #dcfce7; color: #166534; }
+.badge-at-risk { background: #fef9c3; color: #854d0e; }
+.badge-delayed { background: #fee2e2; color: #991b1b; }
+.badge-complete { background: #dbeafe; color: #1e40af; }
+.badge-on-budget { background: #dcfce7; color: #166534; }
+.badge-over-budget { background: #fee2e2; color: #991b1b; }
+
+/* SLS Card hover */
+.sls-card {
+  background: #ffffff;
+  border: 1px solid #e8e3d8;
+  border-radius: var(--radius);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.sls-card:hover {
+  border-color: var(--sls-gold);
+  box-shadow: 0 2px 12px rgba(210, 156, 60, 0.12);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--sls-off-white); }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sls-gold); }
+
+/* Table row hover */
+tr:hover td { background-color: #fdf8ef; }
+
+/* Page fade in */
+.page-enter { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @layer components {
