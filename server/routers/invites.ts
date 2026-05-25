@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { inviteTokens, users } from "../../drizzle/schema";
+import { inviteTokens, projects, projectTeam, users } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -31,6 +31,8 @@ export const invitesRouter = router({
         inviteCode: z.string().min(4).max(128),
         expiresInDays: z.number().int().min(1).max(365).optional().default(30),
         origin: z.string().url(),
+        projectId: z.number().int().positive().optional(),
+        projectRole: z.string().max(64).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -39,6 +41,18 @@ export const invitesRouter = router({
       }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Validate the project exists if provided
+      if (input.projectId) {
+        const proj = await db
+          .select({ id: projects.id })
+          .from(projects)
+          .where(eq(projects.id, input.projectId))
+          .limit(1);
+        if (proj.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+        }
+      }
 
       const token = nanoid(32);
       const expiresAt = new Date();
@@ -52,6 +66,8 @@ export const invitesRouter = router({
         createdBy: ctx.user.id,
         expiresAt,
         isRevoked: false,
+        projectId: input.projectId ?? null,
+        projectRole: input.projectRole ?? null,
       });
 
       const inviteUrl = `${input.origin}/invite/${token}`;
@@ -78,9 +94,13 @@ export const invitesRouter = router({
         createdAt: inviteTokens.createdAt,
         usedByName: users.name,
         usedByEmail: users.email,
+        projectId: inviteTokens.projectId,
+        projectRole: inviteTokens.projectRole,
+        projectName: projects.name,
       })
       .from(inviteTokens)
       .leftJoin(users, eq(inviteTokens.usedBy, users.id))
+      .leftJoin(projects, eq(inviteTokens.projectId, projects.id))
       .orderBy(inviteTokens.createdAt);
 
     return rows;
@@ -104,7 +124,7 @@ export const invitesRouter = router({
       return { success: true };
     }),
 
-  // ── Validate token (public — used on the accept page before OAuth) ─────────
+  // ── Validate token (used on the accept page to show invite details) ─────────
   validate: protectedProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ input }) => {
@@ -113,8 +133,16 @@ export const invitesRouter = router({
 
       const now = new Date();
       const rows = await db
-        .select()
+        .select({
+          id: inviteTokens.id,
+          role: inviteTokens.role,
+          label: inviteTokens.label,
+          projectId: inviteTokens.projectId,
+          projectRole: inviteTokens.projectRole,
+          projectName: projects.name,
+        })
         .from(inviteTokens)
+        .leftJoin(projects, eq(inviteTokens.projectId, projects.id))
         .where(
           and(
             eq(inviteTokens.token, input.token),
@@ -126,12 +154,20 @@ export const invitesRouter = router({
         .limit(1);
 
       if (rows.length === 0) {
-        return { valid: false, role: null, label: null };
+        return { valid: false, role: null, label: null, projectId: null, projectName: null, projectRole: null };
       }
-      return { valid: true, role: rows[0].role, label: rows[0].label };
+      const row = rows[0];
+      return {
+        valid: true,
+        role: row.role,
+        label: row.label,
+        projectId: row.projectId ?? null,
+        projectName: row.projectName ?? null,
+        projectRole: row.projectRole ?? null,
+      };
     }),
 
-  // ── Redeem invite (called after OAuth, verifies code and promotes user) ────
+  // ── Redeem invite (verifies code, promotes user, auto-assigns to project) ──
   redeem: protectedProcedure
     .input(z.object({ token: z.string(), inviteCode: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -174,6 +210,54 @@ export const invitesRouter = router({
         .set({ role: invite.role as any })
         .where(eq(users.id, ctx.user.id));
 
-      return { success: true, role: invite.role };
+      // Auto-assign to project if specified
+      let projectAssigned = false;
+      if (invite.projectId) {
+        // Check if already a member to avoid duplicates
+        const existing = await db
+          .select({ id: projectTeam.id })
+          .from(projectTeam)
+          .where(
+            and(
+              eq(projectTeam.projectId, invite.projectId),
+              eq(projectTeam.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        if (existing.length === 0) {
+          await db.insert(projectTeam).values({
+            projectId: invite.projectId,
+            userId: ctx.user.id,
+            role: invite.projectRole ?? invite.role,
+          });
+          projectAssigned = true;
+        } else {
+          projectAssigned = true; // already a member — still counts as assigned
+        }
+      }
+
+      return {
+        success: true,
+        role: invite.role,
+        projectId: invite.projectId ?? null,
+        projectAssigned,
+      };
     }),
+
+  // ── List projects (for the invite form dropdown) ───────────────────────────
+  listProjects: protectedProcedure.query(async ({ ctx }) => {
+    if (!isAdmin(ctx.user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    }
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const rows = await db
+      .select({ id: projects.id, name: projects.name, status: projects.status })
+      .from(projects)
+      .orderBy(projects.name);
+
+    return rows;
+  }),
 });

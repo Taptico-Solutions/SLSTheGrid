@@ -46,3 +46,13 @@
 - [x] Add Invite Management section to Admin.tsx (generate link, copy, list, revoke)
 - [x] Write vitest tests for invite router
 - [x] Save checkpoint and deliver
+
+## Feature: Invite Project Auto-Assignment
+- [x] Add projectId column to invite_tokens table in drizzle/schema.ts
+- [x] Apply ALTER TABLE migration to add projectId column to database
+- [x] Update invites.create procedure to accept optional projectId
+- [x] Update invites.redeem procedure to auto-insert into project_members on redeem
+- [x] Update invites.list to return projectId and project name
+- [x] Add project selector dropdown to Admin invite form
+- [x] Write/update tests for project auto-assignment on redeem
+- [x] Save checkpoint and deliver

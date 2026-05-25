@@ -377,6 +377,9 @@ export const inviteTokens = mysqlTable("invite_tokens", {
   usedAt: timestamp("usedAt"),
   isRevoked: boolean("isRevoked").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Optional: auto-assign to a project on redemption
+  projectId: int("projectId"),
+  projectRole: varchar("projectRole", { length: 64 }),
 });
 export type InviteToken = typeof inviteTokens.$inferSelect;
 export type InsertInviteToken = typeof inviteTokens.$inferInsert;

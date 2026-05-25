@@ -63,11 +63,14 @@ export default function Admin() {
   const [inviteLabel, setInviteLabel] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [inviteExpiry, setInviteExpiry] = useState("30");
+  const [inviteProjectId, setInviteProjectId] = useState<string>("none");
+  const [inviteProjectRole, setInviteProjectRole] = useState<string>("");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   const { data: inviteList, refetch: refetchInvites } = trpc.invites.list.useQuery();
+  const { data: projectList } = trpc.invites.listProjects.useQuery();
 
   const createInvite = trpc.invites.create.useMutation({
     onSuccess: (data) => {
@@ -77,6 +80,8 @@ export default function Admin() {
       setInviteCode("");
       setInviteRole("user");
       setInviteExpiry("30");
+      setInviteProjectId("none");
+      setInviteProjectRole("");
       toast.success("Invite link created!");
     },
     onError: (err) => toast.error("Failed to create invite", { description: err.message }),
@@ -90,12 +95,15 @@ export default function Admin() {
   function handleCreateInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteCode.trim()) { toast.error("Invite code is required."); return; }
+    const pid = inviteProjectId !== "none" ? parseInt(inviteProjectId) : undefined;
     createInvite.mutate({
       role: inviteRole as any,
       label: inviteLabel || undefined,
       inviteCode: inviteCode.trim(),
       expiresInDays: parseInt(inviteExpiry) || 30,
       origin: window.location.origin,
+      projectId: pid,
+      projectRole: pid && inviteProjectRole ? inviteProjectRole : undefined,
     });
   }
 
@@ -422,6 +430,31 @@ export default function Admin() {
                     <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Expires in (days)</Label>
                     <Input type="number" min={1} max={365} value={inviteExpiry} onChange={e => setInviteExpiry(e.target.value)} className="text-sm border-[#e6dec2]" />
                   </div>
+                  {/* Project auto-assignment */}
+                  <div>
+                    <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Auto-assign to Project <span className="text-gray-400 font-normal">(optional)</span></Label>
+                    <Select value={inviteProjectId} onValueChange={setInviteProjectId}>
+                      <SelectTrigger className="text-sm border-[#e6dec2]"><SelectValue placeholder="No project assignment" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs">No project assignment</SelectItem>
+                        {(projectList ?? []).map(p => (
+                          <SelectItem key={p.id} value={String(p.id)} className="text-xs">{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {inviteProjectId !== "none" && (
+                    <div>
+                      <Label className="text-xs font-semibold text-[#1b110b] mb-1 block" style={{ fontFamily: "Inter, sans-serif" }}>Project Role Label <span className="text-gray-400 font-normal">(optional)</span></Label>
+                      <Input
+                        placeholder="e.g. Lead Architect"
+                        value={inviteProjectRole}
+                        onChange={e => setInviteProjectRole(e.target.value)}
+                        className="text-sm border-[#e6dec2]"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Defaults to the portal role if left blank.</p>
+                    </div>
+                  )}
                   <div className="sm:col-span-2 flex gap-2">
                     <Button type="submit" disabled={createInvite.isPending} style={{ background: "#d29c3c", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       {createInvite.isPending ? <><Loader2 size={13} className="mr-1.5 animate-spin" /> Generating…</> : <><Link2 size={13} className="mr-1.5" /> Generate Link</>}
@@ -441,7 +474,7 @@ export default function Admin() {
               <table className="w-full text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e8e3d8", background: "#fdf8ef" }}>
-                    {["Label / Role", "Status", "Expires", "Used By", ""].map(h => (
+                    {["Label / Role", "Status", "Project", "Expires", "Used By", ""].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left" style={{ fontSize: "11px", fontWeight: 600, color: "#7a6e62", textTransform: "uppercase", letterSpacing: "0.07em" }}>{h}</th>
                     ))}
                   </tr>
@@ -462,6 +495,16 @@ export default function Admin() {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: statusColors[status], color: statusText[status] }}>
                             {status.charAt(0).toUpperCase() + status.slice(1)}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {inv.projectName ? (
+                            <div>
+                              <div className="font-medium text-[#1b110b]" style={{ fontSize: "12px" }}>{inv.projectName}</div>
+                              {inv.projectRole && <div style={{ fontSize: "11px", color: "#7a6e62" }}>{inv.projectRole}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500">
                           {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "Never"}
