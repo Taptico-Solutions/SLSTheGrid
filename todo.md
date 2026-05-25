@@ -56,3 +56,10 @@
 - [x] Add project selector dropdown to Admin invite form
 - [x] Write/update tests for project auto-assignment on redeem
 - [x] Save checkpoint and deliver
+
+## Feature: Global Search Bar
+- [x] Add search tRPC procedure querying projects, documents, and submittals
+- [x] Build GlobalSearch command-palette component with keyboard shortcut (Cmd/Ctrl+K)
+- [x] Wire search trigger button into SLSLayout sidebar
+- [x] Write tests for search procedure
+- [x] Save checkpoint and deliver

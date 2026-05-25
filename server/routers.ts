@@ -26,6 +26,7 @@ import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
 import { seedRouter } from "./routers/seed";
 import { invitesRouter } from "./routers/invites";
+import { searchRouter } from "./routers/search";
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
 const INTERNAL_ROLES = ["sls_admin", "sls_rep", "sls_pm", "admin"] as const;
@@ -1013,6 +1014,7 @@ export const appRouter = router({
   gridChat: gridChatRouter,
   seed: seedRouter,
   invites: invitesRouter,
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;

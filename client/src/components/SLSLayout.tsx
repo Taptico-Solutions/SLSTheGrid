@@ -18,14 +18,16 @@ import {
   LogOut,
   MessageSquare,
   Settings,
+  Search,
   ShieldCheck,
   Users,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { OnboardingTour } from "./OnboardingTour";
 import { AskTheGrid } from "./AskTheGrid";
+import GlobalSearch from "./GlobalSearch";
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
 type UserRole = "sls_admin" | "sls_rep" | "sls_pm" | "client_architect" | "client_gc" | "user" | "admin";
@@ -94,6 +96,19 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global keyboard shortcut: Cmd/Ctrl+K opens search
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Notification count
   const { data: notifData } = trpc.notifications.getUnreadCount.useQuery(undefined, {
@@ -226,6 +241,29 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
               by SLS
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Search trigger */}
+      <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {collapsed ? (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="Search (Ctrl+K)"
+          >
+            <Search size={16} style={{ color: "#7a6e62" }} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <Search size={14} style={{ color: "#7a6e62" }} />
+            <span className="flex-1 text-xs" style={{ color: "#5a4e42", fontFamily: "Inter, sans-serif" }}>Search…</span>
+            <kbd className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#5a4e42", fontFamily: "Inter, sans-serif" }}>⌘K</kbd>
+          </button>
         )}
       </div>
 
@@ -379,6 +417,9 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
 
       {/* Ask The GRID - floating chatbot */}
       <AskTheGrid />
+
+      {/* Global Search palette */}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
