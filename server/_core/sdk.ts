@@ -39,8 +39,10 @@ class OAuthService {
   }
 
   private decodeState(state: string): string {
-    const redirectUri = atob(state);
-    return redirectUri;
+    const decoded = atob(state);
+    // State may be encoded as "<redirectUri>|invite:<token>" — extract only the redirectUri part
+    const pipeIndex = decoded.indexOf("|");
+    return pipeIndex !== -1 ? decoded.slice(0, pipeIndex) : decoded;
   }
 
   async getTokenByCode(
