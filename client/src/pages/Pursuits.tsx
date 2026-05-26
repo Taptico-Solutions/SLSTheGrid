@@ -23,6 +23,15 @@ import {
   AlertCircle,
   TrendingUp,
   Filter,
+  Pencil,
+  Clock,
+  MessageSquare,
+  ChevronRight,
+  ExternalLink,
+  Briefcase,
+  HardHat,
+  Landmark,
+  BarChart2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,6 +62,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STAGE_LABELS: Record<string, string> = {
@@ -506,9 +522,14 @@ export default function Pursuits() {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<any>(null);
   const [showImport, setShowImport] = useState(false);
+  const [drawerPursuitId, setDrawerPursuitId] = useState<number | null>(null);
 
   const { data: pursuitList, isLoading, refetch } = trpc.pursuits.list.useQuery({});
   const { data: stats } = trpc.pursuits.stats.useQuery();
+  const { data: drawerDetail, isLoading: drawerLoading } = trpc.pursuits.get.useQuery(
+    { id: drawerPursuitId! },
+    { enabled: drawerPursuitId !== null }
+  );
 
   const deleteMutation = trpc.pursuits.delete.useMutation({
     onSuccess: () => { refetch(); utils.pursuits.stats.invalidate(); toast.success("Pursuit deleted."); },
@@ -664,7 +685,17 @@ export default function Pursuits() {
                     const stageColor = STAGE_COLORS[p.stage] ?? STAGE_COLORS.identified;
                     const prioColor = PRIORITY_COLORS[p.priority] ?? PRIORITY_COLORS.medium;
                     return (
-                      <tr key={p.id} className="border-b hover:bg-[#fdf8ef] transition-colors" style={{ borderColor: "#f0ebe0" }}>
+                      <tr
+                      key={p.id}
+                      className="border-b hover:bg-[#fdf8ef] transition-colors cursor-pointer"
+                      style={{ borderColor: "#f0ebe0" }}
+                      onClick={(e) => {
+                        // Don't open drawer if clicking action buttons
+                        const target = e.target as HTMLElement;
+                        if (target.closest('button') || target.closest('[role="alertdialog"]')) return;
+                        setDrawerPursuitId(p.id);
+                      }}
+                    >
                         <td className="px-4 py-3">
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600, color: "#1b110b" }}>{p.companyName}</div>
                           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#7a6e62", marginTop: "1px" }}>{p.projectName}</div>
@@ -772,6 +803,225 @@ export default function Pursuits() {
         onClose={() => setShowImport(false)}
         onImported={refetch}
       />
+
+      {/* ── Detail Drawer ─────────────────────────────────────────────────── */}
+      <Sheet open={drawerPursuitId !== null} onOpenChange={(v) => { if (!v) setDrawerPursuitId(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0">
+          {drawerLoading || !drawerDetail ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-[#d29c3c] border-t-transparent rounded-full animate-spin" />
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#7a6e62" }}>Loading details…</span>
+              </div>
+            </div>
+          ) : (
+            <PursuitDetailDrawer
+              pursuit={drawerDetail}
+              onEdit={() => {
+                setEditTarget(drawerDetail);
+                setDrawerPursuitId(null);
+                setShowForm(true);
+              }}
+              onClose={() => setDrawerPursuitId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+// ─── Detail Drawer Content ────────────────────────────────────────────────────
+function PursuitDetailDrawer({ pursuit, onEdit, onClose }: { pursuit: any; onEdit: () => void; onClose: () => void }) {
+  const stageColor = STAGE_COLORS[pursuit.stage] ?? STAGE_COLORS.identified;
+  const prioColor = PRIORITY_COLORS[pursuit.priority] ?? PRIORITY_COLORS.medium;
+
+  function Row({ label, value, icon }: { label: string; value?: string | null; icon?: React.ReactNode }) {
+    if (!value) return null;
+    return (
+      <div className="flex items-start gap-3 py-2">
+        {icon && <span className="mt-0.5 flex-shrink-0" style={{ color: "#d29c3c" }}>{icon}</span>}
+        <div className="flex-1 min-w-0">
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "2px" }}>{label}</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#1b110b", wordBreak: "break-word" }}>{value}</div>
+        </div>
+      </div>
+    );
+  }
+
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+      <div className="mb-5">
+        <div className="px-6 py-2 mb-1" style={{ background: "#f9f6f0", borderTop: "1px solid #e6dec2", borderBottom: "1px solid #e6dec2" }}>
+          <span style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "11px", color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</span>
+        </div>
+        <div className="px-6">{children}</div>
+      </div>
+    );
+  }
+
+  const activityTypeIcons: Record<string, React.ReactNode> = {
+    note: <FileText size={13} />,
+    call: <Phone size={13} />,
+    email: <Mail size={13} />,
+    meeting: <User size={13} />,
+    follow_up: <Clock size={13} />,
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-6 py-5 flex-shrink-0" style={{ background: "#1b110b", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, fontSize: "18px", color: "#d29c3c", textTransform: "uppercase", letterSpacing: "0.03em", lineHeight: 1.2 }}>
+              {pursuit.companyName}
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.75)", marginTop: "4px" }}>{pursuit.projectName}</div>
+            {(pursuit.city || pursuit.state) && (
+              <div className="flex items-center gap-1 mt-2" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
+                <MapPin size={11} />
+                {[pursuit.city, pursuit.state].filter(Boolean).join(", ")}
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0">
+            <X size={16} style={{ color: "rgba(255,255,255,0.6)" }} />
+          </button>
+        </div>
+
+        {/* Stage + Priority badges */}
+        <div className="flex items-center gap-2 mt-4">
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: stageColor.bg, color: stageColor.text, fontFamily: "Inter, sans-serif" }}>
+            {STAGE_LABELS[pursuit.stage] ?? pursuit.stage}
+          </span>
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold capitalize" style={{ background: prioColor.bg, color: prioColor.text, fontFamily: "Inter, sans-serif" }}>
+            {pursuit.priority} priority
+          </span>
+          {pursuit.winProbability != null && (
+            <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(210,156,60,0.15)", color: "#d29c3c", fontFamily: "Inter, sans-serif" }}>
+              {pursuit.winProbability}% win probability
+            </span>
+          )}
+        </div>
+
+        {/* Edit button */}
+        <button
+          onClick={onEdit}
+          className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          style={{ background: "rgba(210,156,60,0.15)", color: "#d29c3c", border: "1px solid rgba(210,156,60,0.3)", fontFamily: "Inter, sans-serif" }}
+        >
+          <Pencil size={12} /> Edit Pursuit
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* Financials strip */}
+        <div className="grid grid-cols-3 divide-x divide-[#e6dec2]" style={{ borderBottom: "1px solid #e6dec2" }}>
+          {[
+            { label: "Project Value", value: fmt$(pursuit.estimatedValue) },
+            { label: "Lighting Value", value: fmt$(pursuit.estimatedLightingValue) },
+            { label: "Expected Close", value: pursuit.expectedCloseDate ? new Date(pursuit.expectedCloseDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" },
+          ].map(item => (
+            <div key={item.label} className="px-4 py-3 text-center">
+              <div style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, fontSize: "14px", color: "#1b110b" }}>{item.value}</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "2px" }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Project Details */}
+        <Section title="Project Details">
+          <Row label="Project Type" value={pursuit.projectType} icon={<Briefcase size={14} />} />
+          <Row label="Market Sector" value={pursuit.marketSector} icon={<BarChart2 size={14} />} />
+          <Row label="Source" value={pursuit.source ? SOURCE_LABELS[pursuit.source] : null} icon={<Target size={14} />} />
+          <Row label="Next Follow-Up" value={pursuit.nextFollowUpDate ? new Date(pursuit.nextFollowUpDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null} icon={<Calendar size={14} />} />
+          <Row label="Next Step" value={pursuit.nextStep} icon={<ChevronRight size={14} />} />
+        </Section>
+
+        {/* Primary Contact */}
+        {(pursuit.primaryContactName || pursuit.primaryContactEmail || pursuit.primaryContactPhone) && (
+          <Section title="Primary Contact">
+            <Row label="Name" value={pursuit.primaryContactName} icon={<User size={14} />} />
+            <Row label="Title" value={pursuit.primaryContactTitle} />
+            {pursuit.primaryContactEmail && (
+              <div className="flex items-start gap-3 py-2">
+                <span className="mt-0.5 flex-shrink-0" style={{ color: "#d29c3c" }}><Mail size={14} /></span>
+                <div className="flex-1">
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "2px" }}>Email</div>
+                  <a href={`mailto:${pursuit.primaryContactEmail}`} className="hover:text-[#d29c3c] transition-colors" style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#1b110b" }}>
+                    {pursuit.primaryContactEmail}
+                  </a>
+                </div>
+              </div>
+            )}
+            {pursuit.primaryContactPhone && (
+              <div className="flex items-start gap-3 py-2">
+                <span className="mt-0.5 flex-shrink-0" style={{ color: "#d29c3c" }}><Phone size={14} /></span>
+                <div className="flex-1">
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "2px" }}>Phone</div>
+                  <a href={`tel:${pursuit.primaryContactPhone}`} className="hover:text-[#d29c3c] transition-colors" style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#1b110b" }}>
+                    {pursuit.primaryContactPhone}
+                  </a>
+                </div>
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* Key Stakeholders */}
+        {(pursuit.ownerName || pursuit.architectName || pursuit.generalContractorName) && (
+          <Section title="Key Stakeholders">
+            <Row label="Owner / Developer" value={pursuit.ownerName} icon={<Landmark size={14} />} />
+            <Row label="Architect / Designer" value={pursuit.architectName} icon={<Building2 size={14} />} />
+            <Row label="General Contractor" value={pursuit.generalContractorName} icon={<HardHat size={14} />} />
+          </Section>
+        )}
+
+        {/* Notes */}
+        {pursuit.notes && (
+          <Section title="Notes">
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#1b110b", lineHeight: 1.7, paddingTop: "8px", paddingBottom: "8px" }}>
+              {pursuit.notes}
+            </p>
+          </Section>
+        )}
+
+        {/* Activity Timeline */}
+        <Section title={`Activity (${(pursuit.activities ?? []).length})`}>
+          {(pursuit.activities ?? []).length === 0 ? (
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#a09080", padding: "12px 0" }}>No activity logged yet.</p>
+          ) : (
+            <div className="space-y-3 py-2">
+              {(pursuit.activities ?? []).map((act: any) => (
+                <div key={act.id} className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "#f9f6f0", border: "1px solid #e6dec2", color: "#d29c3c" }}>
+                    {activityTypeIcons[act.type] ?? <MessageSquare size={13} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600, color: "#1b110b" }}>{act.title}</span>
+                      {act.userName && <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#a09080" }}>by {act.userName}</span>}
+                    </div>
+                    {act.body && <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#7a6e62", marginTop: "2px", lineHeight: 1.5 }}>{act.body}</p>}
+                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#c8bfb0", marginTop: "3px" }}>
+                      {new Date(act.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Metadata footer */}
+        <div className="px-6 py-4 text-xs" style={{ borderTop: "1px solid #e6dec2", fontFamily: "Inter, sans-serif", color: "#a09080" }}>
+          Added {new Date(pursuit.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+          {pursuit.updatedAt && ` · Updated ${new Date(pursuit.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+        </div>
+      </div>
     </div>
   );
 }
