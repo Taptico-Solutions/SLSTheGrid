@@ -32,6 +32,7 @@ import {
   HardHat,
   Landmark,
   BarChart2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -474,6 +475,57 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
     });
   }
 
+  function downloadSampleTemplate() {
+    import("xlsx").then(XLSX => {
+      const sampleData = [
+        [
+          "Company Name", "Project Name", "Project Type", "Market Sector",
+          "City", "State", "Stage", "Priority", "Source",
+          "Estimated Value", "Primary Contact Name", "Primary Contact Email",
+          "Primary Contact Phone", "Owner Name", "Architect Name",
+          "General Contractor", "Notes"
+        ],
+        [
+          "Cousins Properties", "Buckhead Tower Renovation", "Office", "Commercial Real Estate",
+          "Atlanta", "GA", "Design", "High", "Referral",
+          "2500000", "Sarah Mitchell", "smitchell@cousins.com",
+          "404-555-0101", "Cousins Properties", "Perkins+Will",
+          "Brasfield & Gorrie", "Spec lighting for floors 12-18. Decision Q3."
+        ],
+        [
+          "Portman Holdings", "Peachtree Center Hotel", "Hospitality", "Hotel",
+          "Atlanta", "GA", "Early Planning", "Medium", "Cold Outreach",
+          "850000", "James Portman", "jportman@portman.com",
+          "404-555-0202", "Portman Holdings", "HKS Architects",
+          "Holder Construction", "Full hotel lighting package. RFP expected Jan."
+        ],
+        [
+          "JLL", "Midtown Mixed-Use Development", "Mixed-Use", "Commercial Real Estate",
+          "Nashville", "TN", "Pricing", "High", "Plan Room",
+          "1200000", "Karen Ellis", "kellis@jll.com",
+          "615-555-0303", "JLL", "Gresham Smith",
+          "Turner Construction", "Retail podium + 3 office floors. Bid due 45 days."
+        ],
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sampleData);
+
+      // Style the header row width
+      ws["!cols"] = sampleData[0].map(() => ({ wch: 22 }));
+
+      XLSX.utils.book_append_sheet(wb, ws, "Chase List");
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SLS_Chase_List_Template.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   function handleImport() {
     if (allRows.length === 0) return;
     const mapped = allRows.map(r => ({
@@ -503,9 +555,20 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); resetState(); } }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Import Chase List
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Import Chase List
+            </DialogTitle>
+            <button
+              type="button"
+              onClick={downloadSampleTemplate}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors hover:bg-[#fdf8ef] hover:border-[#d29c3c] hover:text-[#d29c3c]"
+              style={{ fontFamily: "Inter, sans-serif", borderColor: "#e6dec2", color: "#7a6e62" }}
+            >
+              <Download size={12} />
+              Download Template
+            </button>
+          </div>
         </DialogHeader>
         <div className="space-y-4 pt-2">
 
