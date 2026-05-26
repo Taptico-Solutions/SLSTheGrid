@@ -6,8 +6,10 @@ import {
   INTERNAL_ROLES,
   prospectLeads,
   prospectSignals,
+  projects,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { invokeLLM } from "../_core/llm";
 
 const leadStatusValues = [
   "new",
@@ -459,6 +461,194 @@ export const prospectRadarRouter = router({
       .where(eq(prospectSignals.id, (result as any).insertId));
     return row;
   }),
+
+  deleteLead: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      requireInternal(ctx.user.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db.delete(prospectSignals).where(eq(prospectSignals.prospectId, input.id));
+      await db.delete(prospectLeads).where(eq(prospectLeads.id, input.id));
+      return { ok: true };
+    }),
+
+  convertToProject: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      requireInternal(ctx.user.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [lead] = await db
+        .select()
+        .from(prospectLeads)
+        .where(eq(prospectLeads.id, input.id));
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Derive city/state from location string ("City, ST" or "City, State")
+      let city: string | undefined;
+      let state: string | undefined;
+      const locationParts = lead.location.split(",").map((s) => s.trim());
+      if (locationParts.length >= 2) {
+        city = locationParts[0];
+        state = locationParts[1].split("—")[0].trim(); // handle "Atlanta, GA — West Midtown"
+      }
+
+      const result = await db.insert(projects).values({
+        name: lead.projectName,
+        description: lead.summary ?? undefined,
+        buildingType: lead.projectType,
+        address: lead.location,
+        city,
+        state,
+        originalBudget: lead.estimatedLightingValue ?? undefined,
+        currentBudget: lead.estimatedLightingValue ?? undefined,
+        assignedRepId: lead.assignedRepId ?? ctx.user.id,
+        createdBy: ctx.user.id,
+        status: "intake",
+      });
+      const projectId = (result as any).insertId as number;
+
+      // Mark lead as won
+      await db
+        .update(prospectLeads)
+        .set({ status: "won", updatedAt: new Date() })
+        .where(eq(prospectLeads.id, input.id));
+
+      return { projectId };
+    }),
+
+  generateOutreach: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      requireInternal(ctx.user.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [lead] = await db
+        .select()
+        .from(prospectLeads)
+        .where(eq(prospectLeads.id, input.id));
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const signals = await db
+        .select()
+        .from(prospectSignals)
+        .where(eq(prospectSignals.prospectId, input.id));
+
+      const signalSummary = signals
+        .map((s) => `- ${s.type.replace(/_/g, " ")}: ${s.title}${s.description ? " — " + s.description : ""}`)
+        .join("\n");
+
+      const systemPrompt = `You are a senior commercial lighting sales strategist for Southern Lighting Source (SLS), an Atlanta-based manufacturers rep specializing in commercial, hospitality, healthcare, and institutional lighting. SLS represents premium fixture manufacturers and provides specification support, submittal management, and project coordination.
+
+Your task is to write a 3-touch cold outreach email sequence for a specific commercial construction prospect. Each email should be:
+- Concise (under 200 words)
+- Personalized to the specific project type, buying signals, and decision-making context
+- Written from the perspective of an SLS sales rep (not generic)
+- Focused on value: specification support, manufacturer relationships, submittal management, on-time delivery
+- Professional but warm — not salesy or pushy
+- Include a clear, low-friction call to action
+
+Touch 1 (Day 1): Initial outreach — reference the specific project and a buying signal. Introduce SLS briefly.
+Touch 2 (Day 5): Follow-up — add a specific value point (e.g., a relevant manufacturer, a case study angle, a controls or energy code insight).
+Touch 3 (Day 12): Final touch — acknowledge they may be busy, offer a specific resource (spec sheet, fixture shortlist, lunch-and-learn), keep the door open.`;
+
+      const userPrompt = `Generate a 3-touch cold outreach email sequence for this prospect:
+
+Project: ${lead.projectName}
+Company: ${lead.companyName}
+Project Type: ${lead.projectType}${lead.marketSector ? " / " + lead.marketSector : ""}
+Location: ${lead.location}
+Buying Stage: ${lead.buyingStage.replace(/_/g, " ")}
+Decision Window: ${lead.decisionWindow ?? "Unknown"}
+Estimated Lighting Value: ${lead.estimatedLightingValue ? "$" + Number(lead.estimatedLightingValue).toLocaleString() : "Unknown"}
+Primary Contact: ${lead.primaryContactName ?? "Unknown"}${lead.primaryContactTitle ? " (" + lead.primaryContactTitle + ")" : ""}
+Architect: ${lead.architectName ?? "Unknown"}
+GC: ${lead.generalContractorName ?? "Unknown"}
+Electrical Engineer: ${lead.electricalEngineerName ?? "Unknown"}
+
+Key Buying Signals:
+${signalSummary || "No specific signals logged yet."}
+
+Primary Signal Summary: ${lead.primarySignal}
+
+Recommended Next Step: ${lead.recommendedNextStep ?? "Establish contact and qualify the opportunity."}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "outreach_sequence",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                touch1: {
+                  type: "object",
+                  properties: {
+                    subject: { type: "string", description: "Email subject line" },
+                    body: { type: "string", description: "Email body text" },
+                    sendDay: { type: "number", description: "Day to send (1)" },
+                    callToAction: { type: "string", description: "The specific CTA" },
+                  },
+                  required: ["subject", "body", "sendDay", "callToAction"],
+                  additionalProperties: false,
+                },
+                touch2: {
+                  type: "object",
+                  properties: {
+                    subject: { type: "string", description: "Email subject line" },
+                    body: { type: "string", description: "Email body text" },
+                    sendDay: { type: "number", description: "Day to send (5)" },
+                    callToAction: { type: "string", description: "The specific CTA" },
+                  },
+                  required: ["subject", "body", "sendDay", "callToAction"],
+                  additionalProperties: false,
+                },
+                touch3: {
+                  type: "object",
+                  properties: {
+                    subject: { type: "string", description: "Email subject line" },
+                    body: { type: "string", description: "Email body text" },
+                    sendDay: { type: "number", description: "Day to send (12)" },
+                    callToAction: { type: "string", description: "The specific CTA" },
+                  },
+                  required: ["subject", "body", "sendDay", "callToAction"],
+                  additionalProperties: false,
+                },
+                strategyNote: {
+                  type: "string",
+                  description: "1-2 sentence internal note explaining the outreach angle and why it fits this prospect",
+                },
+              },
+              required: ["touch1", "touch2", "touch3", "strategyNote"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = response.choices[0]?.message?.content;
+      if (!rawContent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty response" });
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+
+      try {
+        const parsed = JSON.parse(content);
+        return parsed as {
+          touch1: { subject: string; body: string; sendDay: number; callToAction: string };
+          touch2: { subject: string; body: string; sendDay: number; callToAction: string };
+          touch3: { subject: string; body: string; sendDay: number; callToAction: string };
+          strategyNote: string;
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse outreach sequence" });
+      }
+    }),
 
   loadDemo: protectedProcedure.mutation(async ({ ctx }) => {
     requireInternal(ctx.user.role);

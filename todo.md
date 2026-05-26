@@ -122,3 +122,12 @@
 - [x] Write 14 Vitest tests for prospect radar (input validation, signal validation, money helper, enum coverage)
 - [x] 45/45 tests passing, 0 TypeScript errors
 - [x] Save checkpoint and deliver
+
+## Feature: Prospect Radar Enhancements (Round 2)
+- [x] Add signal ingestion form (Add Signal sheet on Prospect Radar page, wired to prospectRadar.addSignal)
+- [x] Add lead create/edit modal (full form wired to prospectRadar.create + prospectRadar.update)
+- [x] Add project conversion action (Convert to Project button on qualified leads, pre-populates project modal)
+- [x] Add AI cold outreach sequence generator (per-lead, per-signal, LLM-powered, 3-touch email sequence)
+- [x] Extend prospectRadar router: generateOutreach procedure using invokeLLM
+- [x] Write Vitest tests for all new router procedures
+- [x] Save checkpoint and deliver

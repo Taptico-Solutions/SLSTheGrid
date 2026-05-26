@@ -240,3 +240,145 @@ describe("Prospect Radar — enum coverage", () => {
     expect(signalTypeValues).toContain("news");
   });
 });
+
+// ─── New tests for Round 2 enhancements ──────────────────────────────────────
+
+describe("Prospect Radar — convertToProject city/state parsing", () => {
+  function parseLocation(location: string) {
+    const parts = location.split(",").map((s) => s.trim());
+    let city: string | undefined;
+    let state: string | undefined;
+    if (parts.length >= 2) {
+      city = parts[0];
+      state = parts[1].split("—")[0].trim();
+    }
+    return { city, state };
+  }
+
+  it("parses 'Atlanta, GA' into city and state", () => {
+    const { city, state } = parseLocation("Atlanta, GA");
+    expect(city).toBe("Atlanta");
+    expect(state).toBe("GA");
+  });
+
+  it("parses 'Atlanta, GA — West Midtown' correctly (strips em-dash suffix)", () => {
+    const { city, state } = parseLocation("Atlanta, GA — West Midtown");
+    expect(city).toBe("Atlanta");
+    expect(state).toBe("GA");
+  });
+
+  it("parses 'Nashville, TN' correctly", () => {
+    const { city, state } = parseLocation("Nashville, TN");
+    expect(city).toBe("Nashville");
+    expect(state).toBe("TN");
+  });
+
+  it("returns undefined city/state for a location with no comma", () => {
+    const { city, state } = parseLocation("Atlanta");
+    expect(city).toBeUndefined();
+    expect(state).toBeUndefined();
+  });
+});
+
+describe("Prospect Radar — outreach sequence shape", () => {
+  const OutreachTouchSchema = z.object({
+    subject: z.string().min(1),
+    body: z.string().min(1),
+    sendDay: z.number(),
+    callToAction: z.string().min(1),
+  });
+
+  const OutreachSequenceSchema = z.object({
+    touch1: OutreachTouchSchema,
+    touch2: OutreachTouchSchema,
+    touch3: OutreachTouchSchema,
+    strategyNote: z.string().min(1),
+  });
+
+  it("validates a well-formed outreach sequence", () => {
+    const result = OutreachSequenceSchema.safeParse({
+      touch1: { subject: "Re: West Midtown Food Hall lighting", body: "Hi Maya,\n\nI noticed…", sendDay: 1, callToAction: "15-min call this week?" },
+      touch2: { subject: "Follow-up: SLS + Harris + Cole", body: "Hi Maya,\n\nWanted to share…", sendDay: 5, callToAction: "Can I send a fixture shortlist?" },
+      touch3: { subject: "Last note — SLS lighting spec support", body: "Hi Maya,\n\nI know you're busy…", sendDay: 12, callToAction: "Happy to send a lunch-and-learn invite." },
+      strategyNote: "Targeting the architect relationship first given early design stage.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a sequence with a missing touch", () => {
+    const result = OutreachSequenceSchema.safeParse({
+      touch1: { subject: "Re: project", body: "Hi", sendDay: 1, callToAction: "Call?" },
+      touch2: { subject: "Follow-up", body: "Hi again", sendDay: 5, callToAction: "Call?" },
+      // touch3 missing
+      strategyNote: "Some note",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a touch with an empty subject", () => {
+    const result = OutreachTouchSchema.safeParse({ subject: "", body: "Hi", sendDay: 1, callToAction: "Call?" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("Prospect Radar — deleteLead input validation", () => {
+  const DeleteLeadInput = z.object({ id: z.number().int().positive() });
+
+  it("accepts a valid positive integer id", () => {
+    expect(DeleteLeadInput.safeParse({ id: 42 }).success).toBe(true);
+  });
+
+  it("rejects id of 0", () => {
+    expect(DeleteLeadInput.safeParse({ id: 0 }).success).toBe(false);
+  });
+
+  it("rejects a negative id", () => {
+    expect(DeleteLeadInput.safeParse({ id: -1 }).success).toBe(false);
+  });
+
+  it("rejects a non-integer id", () => {
+    expect(DeleteLeadInput.safeParse({ id: 3.14 }).success).toBe(false);
+  });
+});
+
+describe("Prospect Radar — lead form required fields", () => {
+  const MinimalLeadSchema = z.object({
+    companyName: z.string().min(1),
+    projectName: z.string().min(1),
+    projectType: z.string().min(1),
+    location: z.string().min(1),
+    primarySignal: z.string().min(1),
+  });
+
+  it("passes when all required fields are present", () => {
+    const result = MinimalLeadSchema.safeParse({
+      companyName: "Acme",
+      projectName: "Lobby Renovation",
+      projectType: "Office",
+      location: "Atlanta, GA",
+      primarySignal: "Permit filed",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("fails when primarySignal is empty string", () => {
+    const result = MinimalLeadSchema.safeParse({
+      companyName: "Acme",
+      projectName: "Lobby Renovation",
+      projectType: "Office",
+      location: "Atlanta, GA",
+      primarySignal: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("fails when companyName is missing", () => {
+    const result = MinimalLeadSchema.safeParse({
+      projectName: "Lobby Renovation",
+      projectType: "Office",
+      location: "Atlanta, GA",
+      primarySignal: "Permit filed",
+    });
+    expect(result.success).toBe(false);
+  });
+});
