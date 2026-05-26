@@ -29,6 +29,7 @@ import { seedRouter } from "./routers/seed";
 import { invitesRouter } from "./routers/invites";
 import { searchRouter } from "./routers/search";
 import { prospectRadarRouter } from "./routers/prospectRadar";
+import { pursuitsRouter } from "./routers/pursuits";
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
 const INTERNAL_ROLES = ["sls_admin", "sls_rep", "sls_pm", "admin"] as const;
@@ -1126,6 +1127,7 @@ export const appRouter = router({
   invites: invitesRouter,
   search: searchRouter,
   prospectRadar: prospectRadarRouter,
+  pursuits: pursuitsRouter,
 });
 
 export type AppRouter = typeof appRouter;

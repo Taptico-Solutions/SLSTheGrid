@@ -123,7 +123,7 @@ export function AskTheGrid() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.95 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-24 left-4 z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+            className="fixed bottom-24 right-4 z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
             style={{ width: "360px", height: "520px", background: "#ffffff", border: "1px solid #e6dec2" }}
           >
             {/* Header */}
@@ -256,7 +256,7 @@ export function AskTheGrid() {
       {/* Floating button */}
       <motion.button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-5 left-4 z-50 flex items-center gap-2.5 rounded-2xl shadow-lg"
+        className="fixed bottom-5 right-4 z-50 flex items-center gap-2.5 rounded-2xl shadow-lg"
         style={{ background: "#1b110b", border: "1.5px solid rgba(210,156,60,0.4)", padding: "10px 16px 10px 12px" }}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
