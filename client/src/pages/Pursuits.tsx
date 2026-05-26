@@ -355,6 +355,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
   const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
+  const [previewDisplayHeaders, setPreviewDisplayHeaders] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -377,28 +378,58 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
     setAllRows([]);
     setPreview([]);
     setPreviewHeaders([]);
+    setPreviewDisplayHeaders([]);
     setError("");
     if (fileRef.current) fileRef.current.value = "";
   }
 
   function parseRowsFromSheet(XLSX: any, workbook: any) {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    // Use sheet_to_json for clean structured data — no CSV conversion
-    const jsonRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-    if (jsonRows.length === 0) { setError("The spreadsheet appears to be empty."); return; }
-    // Normalize header keys
-    const normalized = jsonRows.map(row => {
+
+    // Convert to raw 2D array first so we can find the real header row
+    const raw: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    if (raw.length === 0) { setError("The spreadsheet appears to be empty."); return; }
+
+    // Find the first row that has at least 2 non-empty cells — that's the header row
+    let headerRowIdx = 0;
+    for (let i = 0; i < Math.min(raw.length, 10); i++) {
+      const nonEmpty = raw[i].filter((c: any) => String(c ?? "").trim() !== "").length;
+      if (nonEmpty >= 2) { headerRowIdx = i; break; }
+    }
+
+    const headerRow = raw[headerRowIdx].map((h: any) =>
+      String(h ?? "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+    );
+
+    // Build data rows from everything after the header row, skip fully-empty rows
+    const dataRows = raw.slice(headerRowIdx + 1).filter((row: any[]) =>
+      row.some((c: any) => String(c ?? "").trim() !== "")
+    );
+
+    if (dataRows.length === 0) { setError("No data rows found after the header row."); return; }
+
+    const normalized = dataRows.map((row: any[]) => {
       const out: Record<string, string> = {};
-      Object.entries(row).forEach(([k, v]) => {
-        const key = String(k).trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-        out[key] = String(v ?? "").trim();
+      headerRow.forEach((h: string, i: number) => {
+        if (h) out[h] = String(row[i] ?? "").trim();
       });
       return out;
     });
-    const headers = Object.keys(normalized[0]);
+
+    // Use the original (un-normalized) header row for display
+    const displayHeaders = raw[headerRowIdx]
+      .map((h: any) => String(h ?? "").trim())
+      .filter((h: string) => h !== "")
+      .slice(0, 7);
+
     setAllRows(normalized);
     setPreview(normalized.slice(0, 5));
-    setPreviewHeaders(headers.slice(0, 7));
+    // Store display headers separately for the preview table
+    setPreviewHeaders(displayHeaders.map((h: string) =>
+      h.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+    ));
+    // Save display labels for column headers
+    setPreviewDisplayHeaders(displayHeaders);
     setError("");
   }
 
@@ -519,8 +550,8 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
                 <table className="text-xs w-full">
                   <thead style={{ background: "#f9f6f0" }}>
                     <tr>
-                      {previewHeaders.map(k => (
-                        <th key={k} className="px-2 py-1.5 text-left whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62", fontWeight: 600 }}>{k}</th>
+                      {(previewDisplayHeaders.length > 0 ? previewDisplayHeaders : previewHeaders).map((k, idx) => (
+                        <th key={idx} className="px-2 py-1.5 text-left whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62", fontWeight: 600 }}>{k}</th>
                       ))}
                     </tr>
                   </thead>
