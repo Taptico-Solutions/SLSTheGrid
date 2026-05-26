@@ -20,6 +20,7 @@ import { copilotRouter } from "./copilot";
 import { gridChatRouter } from "./gridChat";
 import { seedRouter } from "./seed";
 import { prioritiesRouter } from "./priorities";
+import { prospectRadarRouter } from "./prospectRadar";
 
 export const appRouter = router({
   auth: authRouter,
@@ -43,6 +44,7 @@ export const appRouter = router({
   gridChat: gridChatRouter,
   seed: seedRouter,
   priorities: prioritiesRouter,
+  prospectRadar: prospectRadarRouter,
 });
 
 export type AppRouter = typeof appRouter;

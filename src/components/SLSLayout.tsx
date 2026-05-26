@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
@@ -44,7 +45,10 @@ const ADMINS = ["admin", "sls_admin"];
 const SECTIONS: NavSection[] = [
   {
     label: "Main",
-    items: [{ label: "Dashboard", href: "/", icon: LayoutDashboard }],
+    items: [
+      { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { label: "Prospect Radar", href: "/prospect-radar", icon: Radar, roles: INTERNAL },
+    ],
   },
   {
     label: "Projects",

@@ -133,6 +133,41 @@ export const priorityStatusEnum = pgEnum("priority_status", [
   "done",
 ]);
 
+export const prospectLeadStatusEnum = pgEnum("prospect_lead_status", [
+  "new",
+  "researching",
+  "contacted",
+  "qualified",
+  "proposal",
+  "won",
+  "lost",
+  "nurture",
+]);
+
+export const prospectBuyingStageEnum = pgEnum("prospect_buying_stage", [
+  "early_planning",
+  "design",
+  "pricing",
+  "bidding",
+  "awarded",
+  "procurement",
+]);
+
+export const prospectSignalTypeEnum = pgEnum("prospect_signal_type", [
+  "permit",
+  "plan_room",
+  "construction_start",
+  "architect_activity",
+  "gc_award",
+  "budget_approved",
+  "renovation",
+  "tenant_improvement",
+  "hospitality_pipeline",
+  "municipal_bid",
+  "relationship",
+  "news",
+]);
+
 // ─── 4.1 users ────────────────────────────────────────────────────────────
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -341,11 +376,65 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ─── Prospect Radar (account-based management hot leads) ───────────────────
+export const prospectLeads = pgTable("prospect_leads", {
+  id: serial("id").primaryKey(),
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  projectName: varchar("project_name", { length: 255 }).notNull(),
+  projectType: varchar("project_type", { length: 128 }).notNull(),
+  marketSector: varchar("market_sector", { length: 128 }),
+  location: varchar("location", { length: 255 }).notNull(),
+  status: prospectLeadStatusEnum("status").notNull().default("new"),
+  buyingStage: prospectBuyingStageEnum("buying_stage").notNull().default("early_planning"),
+  heatScore: integer("heat_score").notNull().default(50),
+  confidenceScore: integer("confidence_score").notNull().default(50),
+  estimatedProjectValue: decimal("estimated_project_value", { precision: 14, scale: 2 }),
+  estimatedLightingValue: decimal("estimated_lighting_value", { precision: 14, scale: 2 }),
+  decisionWindow: varchar("decision_window", { length: 128 }),
+  expectedBidDate: date("expected_bid_date"),
+  expectedAwardDate: date("expected_award_date"),
+  constructionStartDate: date("construction_start_date"),
+  ownerName: varchar("owner_name", { length: 255 }),
+  architectName: varchar("architect_name", { length: 255 }),
+  generalContractorName: varchar("general_contractor_name", { length: 255 }),
+  electricalEngineerName: varchar("electrical_engineer_name", { length: 255 }),
+  primaryContactName: varchar("primary_contact_name", { length: 255 }),
+  primaryContactTitle: varchar("primary_contact_title", { length: 255 }),
+  primaryContactEmail: varchar("primary_contact_email", { length: 320 }),
+  primaryContactPhone: varchar("primary_contact_phone", { length: 64 }),
+  primarySignal: varchar("primary_signal", { length: 255 }).notNull(),
+  sourceName: varchar("source_name", { length: 255 }),
+  sourceUrl: text("source_url"),
+  summary: text("summary"),
+  recommendedNextStep: text("recommended_next_step"),
+  notes: text("notes"),
+  assignedRepId: integer("assigned_rep_id").references(() => users.id),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const prospectSignals = pgTable("prospect_signals", {
+  id: serial("id").primaryKey(),
+  prospectId: integer("prospect_id").notNull().references(() => prospectLeads.id, { onDelete: "cascade" }),
+  type: prospectSignalTypeEnum("type").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  signalDate: date("signal_date"),
+  sourceName: varchar("source_name", { length: 255 }),
+  sourceUrl: text("source_url"),
+  confidenceScore: integer("confidence_score").notNull().default(50),
+  impactScore: integer("impact_score").notNull().default(50),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── Relations ────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many }) => ({
   createdProjects: many(projects, { relationName: "createdProjects" }),
   teamMemberships: many(projectTeam),
   notifications: many(notifications),
+  assignedProspectLeads: many(prospectLeads, { relationName: "assignedProspectLeads" }),
+  createdProspectLeads: many(prospectLeads, { relationName: "createdProspectLeads" }),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -468,11 +557,28 @@ export const priorityTasksRelations = relations(priorityTasks, ({ one }) => ({
   priority: one(priorities, { fields: [priorityTasks.priorityId], references: [priorities.id] }),
 }));
 
+export const prospectLeadsRelations = relations(prospectLeads, ({ one, many }) => ({
+  assignedRep: one(users, { fields: [prospectLeads.assignedRepId], references: [users.id], relationName: "assignedProspectLeads" }),
+  creator: one(users, { fields: [prospectLeads.createdBy], references: [users.id], relationName: "createdProspectLeads" }),
+  signals: many(prospectSignals),
+}));
+
+export const prospectSignalsRelations = relations(prospectSignals, ({ one }) => ({
+  prospect: one(prospectLeads, { fields: [prospectSignals.prospectId], references: [prospectLeads.id] }),
+}));
+
 export type Priority = typeof priorities.$inferSelect;
 export type NewPriority = typeof priorities.$inferInsert;
 export type PriorityTask = typeof priorityTasks.$inferSelect;
 export type NewPriorityTask = typeof priorityTasks.$inferInsert;
 export type PriorityStatus = typeof priorityStatusEnum.enumValues[number];
+export type ProspectLead = typeof prospectLeads.$inferSelect;
+export type NewProspectLead = typeof prospectLeads.$inferInsert;
+export type ProspectSignal = typeof prospectSignals.$inferSelect;
+export type NewProspectSignal = typeof prospectSignals.$inferInsert;
+export type ProspectLeadStatus = typeof prospectLeadStatusEnum.enumValues[number];
+export type ProspectBuyingStage = typeof prospectBuyingStageEnum.enumValues[number];
+export type ProspectSignalType = typeof prospectSignalTypeEnum.enumValues[number];
 
 // ─── Convenience types ───────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
