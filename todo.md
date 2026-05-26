@@ -140,19 +140,20 @@
 - [x] Write Vitest tests for seed data shape
 - [x] Save checkpoint and deliver
 
-## Feature: Collapsible Sidebar Departments + CRM Pursuits Module
-- [ ] Restructure SLSLayout sidebar into collapsible department sections (Project Management, Sales & CRM, Tools & Admin)
-- [ ] Persist collapse state per section in localStorage
-- [ ] Add Pursuits nav item under Sales & CRM section
-- [ ] Add pursuits table to drizzle schema (company, contact, value, stage, source, notes, assignedRep, etc.)
-- [ ] Run drizzle migration for pursuits table
-- [ ] Write pursuitsCRM tRPC router (list, get, create, update, delete, bulkImport)
-- [ ] Register pursuitsCRM router in appRouter
-- [ ] Build Pursuits page: list/table view with filters, status badges, sort, pagination
-- [ ] Add CSV/spreadsheet upload modal with column mapping and preview
-- [ ] Add Pursuit create/edit modal with full CRM fields
-- [ ] Write Vitest tests for pursuits schema validation and CSV parsing
-- [ ] Save checkpoint and deliver
+## Feature: Collapsible Sidebar Departments + CRM Chase List Module
+- [x] Restructure SLSLayout sidebar into collapsible department sections (Project Management, Sales & CRM, Tools & Admin)
+- [x] Persist collapse state per section in localStorage
+- [x] Add Chase List nav item under Sales & CRM section
+- [x] Add pursuits table to drizzle schema (company, contact, value, stage, source, notes, assignedRep, etc.)
+- [x] Run drizzle migration for pursuits table
+- [x] Write pursuitsCRM tRPC router (list, get, create, update, delete, bulkImport, stats)
+- [x] Register pursuitsCRM router in appRouter
+- [x] Build Chase List page: list/table view with filters, status badges, sort, slide-out drawer
+- [x] Add XLS/XLSX/CSV upload modal with column mapping, preview, and sample template download
+- [x] Add Chase List create/edit modal with full CRM fields
+- [x] Moved Ask The GRID chatbot to bottom-right corner
+- [x] Write Vitest tests for pursuits schema validation, column mapping, stats aggregation, and activity types (22 tests)
+- [x] Save checkpoint and deliver
 
 ## Feature: Email Invite Delivery
 - [ ] Research Manus built-in email/notification API for sending transactional email
@@ -163,20 +164,22 @@
 - [ ] Save checkpoint and deliver
 
 ## Feature: Taptico Workspace (Private Internal Module)
-- [ ] Add `taptico` role to users enum in drizzle/schema.ts and run migration
-- [ ] Create taptico_todos, taptico_meetings, taptico_milestones, taptico_kpis tables
-- [ ] Build taptico tRPC router (CRUD for all 4 sections, gated to taptico role)
-- [ ] Register taptico router in appRouter
-- [ ] Build TapticoWorkspace.tsx page (4 tabs: To-Dos, Meetings, Milestones, KPIs)
-- [ ] Add /taptico-workspace route to App.tsx
-- [ ] Add Taptico Workspace sidebar nav item gated to taptico role only
-- [ ] Promote Nick (id=1) and Dave to taptico role via SQL
-- [ ] Write Vitest tests for taptico router
-- [ ] Save checkpoint and deliver
+- [x] Add `taptico` role to users enum in drizzle/schema.ts and run migration
+- [x] Create taptico_todos, taptico_meetings, taptico_milestones, taptico_kpis tables
+- [x] Build taptico tRPC router (CRUD for all 4 sections, gated to taptico role)
+- [x] Register taptico router in appRouter
+- [x] Build TapticoWorkspace.tsx page (4 tabs: To-Dos, Meetings, Milestones, KPIs)
+- [x] Add /taptico-workspace route to App.tsx
+- [x] Add Taptico Workspace sidebar nav item gated to taptico role only
+- [x] Write Vitest tests for taptico router role gating and all 4 CRUD input schemas (29 tests)
+- [x] Save checkpoint and deliver
 
 ## Feature: Onboarding System Upgrade
-- [ ] Change onboarding tour to show for first 3 logins (track loginCount in users table)
-- [ ] Add persistent "Help & Tour" link in sidebar visible to all users always
-- [ ] Add AI assistant explainer: tooltip/badge on Ask The GRID button explaining what it is
-- [ ] Add explainer distinguishing the sidebar AI Copilot page vs the Ask The GRID chatbot
-- [ ] Save checkpoint and deliver
+- [x] Change onboarding tour to show for first 3 logins (track loginCount in users table)
+- [x] Add persistent "Help & Tour" link in sidebar visible to all users always
+- [x] Add AI assistant explainer: step in onboarding tour explaining Ask The GRID chatbot
+- [x] Save checkpoint and deliver
+
+## Feature: OAuth Fix
+- [x] Fix sdk.ts decodeState() to strip |invite:token suffix before passing redirectUri to Manus token exchange
+- [x] Save checkpoint (v848d7b7f)
