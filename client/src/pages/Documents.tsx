@@ -50,7 +50,11 @@ export default function Documents() {
     name: string;
     type: DocTypeValue;
     file: File | null;
-  }>({ name: "", type: "other", file: null });
+    projectId: number | null;
+  }>({ name: "", type: "other", file: null, projectId: null });
+
+  // Projects for the "Link to Project" dropdown
+  const { data: projectsList } = trpc.projects.list.useQuery(undefined, { enabled: showUpload });
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -63,7 +67,7 @@ export default function Documents() {
     onSuccess: () => {
       refetch();
       setShowUpload(false);
-      setUploadForm({ name: "", type: "other", file: null });
+      setUploadForm({ name: "", type: "other", file: null, projectId: null });
       toast.success("Document uploaded successfully");
     },
     onError: (err) => {
@@ -207,6 +211,7 @@ export default function Documents() {
         fileName: uploadForm.file.name,
         mimeType: uploadForm.file.type || "application/octet-stream",
         fileSize: uploadForm.file.size,
+        ...(uploadForm.projectId ? { projectId: uploadForm.projectId } : {}),
       });
     } catch (err: any) {
       console.error("[Upload] Unexpected error:", err);
@@ -219,7 +224,7 @@ export default function Documents() {
   function handleDialogClose(open: boolean) {
     if (!uploading) {
       setShowUpload(open);
-      if (!open) setUploadForm({ name: "", type: "other", file: null });
+      if (!open) setUploadForm({ name: "", type: "other", file: null, projectId: null });
     }
   }
 
@@ -367,7 +372,9 @@ export default function Documents() {
                         <StatusBadge status={DOC_TYPE_OPTIONS.find(t => t.value === doc.type)?.label ?? doc.type ?? "other"} />
                       </td>
                       <td className="px-4 py-3" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#7a6e62" }}>
-                        {doc.projectId ? `#${doc.projectId}` : "General"}
+                        {doc.projectId
+                          ? (projectsList ?? []).find(p => p.id === doc.projectId)?.name ?? `#${doc.projectId}`
+                          : "General"}
                       </td>
                       <td className="px-4 py-3" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#7a6e62" }}>
                         {formatBytes(doc.fileSize)}
@@ -437,6 +444,25 @@ export default function Documents() {
                 <SelectContent>
                   {DOC_TYPE_OPTIONS.map(t => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a6e62" }}>
+                Link to Project <span style={{ color: "#a09080", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+              </Label>
+              <Select
+                value={uploadForm.projectId ? String(uploadForm.projectId) : "none"}
+                onValueChange={v => setUploadForm(f => ({ ...f, projectId: v === "none" ? null : Number(v) }))}
+              >
+                <SelectTrigger style={{ borderColor: "#e8e3d8", fontFamily: "Inter, sans-serif" }}>
+                  <SelectValue placeholder="No project (general document)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No project (general document)</SelectItem>
+                  {(projectsList ?? []).map(p => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -63,6 +63,51 @@ function makeCtx(role = "sls_admin"): TrpcContext {
   };
 }
 
+describe("documents.upload with projectId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSelect.mockReturnValue({ from: mockFrom });
+    mockFrom.mockReturnValue({ where: mockWhere });
+    mockWhere.mockResolvedValue([]);
+    mockDb.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockResolvedValue({ insertId: 99 }),
+    });
+  });
+
+  it("accepts an optional projectId and resolves without throwing", async () => {
+    // storagePut is mocked to return a url
+    const { storagePut } = await import("../server/storage");
+    (storagePut as any).mockResolvedValue({ key: "sls-docs/1/test.pdf", url: "/manus-storage/test.pdf" });
+
+    const caller = appRouter.createCaller(makeCtx());
+    const result = await caller.documents.upload({
+      name: "Lobby Spec",
+      type: "spec_sheet",
+      fileDataBase64: btoa("fake-pdf-bytes"),
+      fileName: "lobby-spec.pdf",
+      mimeType: "application/pdf",
+      fileSize: 1024,
+      projectId: 42,
+    });
+    expect(result).toMatchObject({ id: expect.any(Number), url: expect.any(String) });
+  });
+
+  it("accepts upload without projectId (general document)", async () => {
+    const { storagePut } = await import("../server/storage");
+    (storagePut as any).mockResolvedValue({ key: "sls-docs/1/test2.pdf", url: "/manus-storage/test2.pdf" });
+
+    const caller = appRouter.createCaller(makeCtx());
+    const result = await caller.documents.upload({
+      name: "General Doc",
+      type: "other",
+      fileDataBase64: btoa("fake-bytes"),
+      fileName: "general.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(result).toMatchObject({ id: expect.any(Number), url: expect.any(String) });
+  });
+});
+
 describe("documents.getBulkDownloadUrls", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -82,3 +82,12 @@
 - [x] Show progress indicator during zip generation
 - [x] Write tests for getBulkDownloadUrls procedure
 - [x] Save checkpoint and deliver
+
+## Feature: Link to Project at Upload
+- [x] Add projectId state to upload form in Documents.tsx
+- [x] Fetch accessible projects list for the dropdown
+- [x] Add optional "Link to Project" Select dropdown to upload dialog
+- [x] Pass projectId through to the documents.upload tRPC mutation
+- [x] Verify projectId is already accepted by the server upload procedure (confirmed, no backend changes needed)
+- [x] Write tests for project-linked upload (covered by existing documents.test.ts)
+- [x] Save checkpoint and deliver
