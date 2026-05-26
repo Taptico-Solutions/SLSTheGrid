@@ -103,3 +103,11 @@
 - [x] Show version badge (v1, v2...) on each document row in the vault table
 - [x] Write tests for uploadVersion and listVersions procedures (31/31 passing)
 - [x] Save checkpoint and deliver
+
+## Feature: Document Vault Live Filter
+- [x] Add text search input (filename / document name) above the vault table
+- [x] Add document type dropdown filter
+- [x] Add linked project dropdown filter
+- [x] Wire all three filters together with client-side useMemo filtering
+- [x] Show active filter count badge and a Clear Filters button
+- [x] Save checkpoint and deliver

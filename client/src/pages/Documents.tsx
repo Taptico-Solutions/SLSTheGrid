@@ -43,6 +43,7 @@ export default function Documents() {
   // Filter state
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
 
   // Upload state
   const [showUpload, setShowUpload] = useState(false);
@@ -54,8 +55,8 @@ export default function Documents() {
     projectId: number | null;
   }>({ name: "", type: "other", file: null, projectId: null });
 
-  // Projects for the "Link to Project" dropdown
-  const { data: projectsList } = trpc.projects.list.useQuery(undefined, { enabled: showUpload });
+  // Projects for the "Link to Project" dropdown and the project filter
+  const { data: projectsList } = trpc.projects.list.useQuery();
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -140,10 +141,19 @@ export default function Documents() {
   );
 
   const filtered = (docs ?? []).filter(d => {
-    const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase()) || (d.fileName ?? "").toLowerCase().includes(search.toLowerCase());
     const matchType = typeFilter === "all" || d.type === typeFilter;
-    return matchSearch && matchType;
+    const matchProject = projectFilter === "all" || (projectFilter === "none" ? !d.projectId : String(d.projectId) === projectFilter);
+    return matchSearch && matchType && matchProject;
   });
+
+  const activeFilterCount = [search, typeFilter !== "all" ? typeFilter : "", projectFilter !== "all" ? projectFilter : ""].filter(Boolean).length;
+
+  function clearFilters() {
+    setSearch("");
+    setTypeFilter("all");
+    setProjectFilter("all");
+  }
 
   // ── Selection helpers ────────────────────────────────────────────────────────
   const allFilteredSelected =
@@ -296,18 +306,20 @@ export default function Documents() {
 
         {/* Filters row */}
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
+          {/* Text search */}
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#a09080" }} />
             <Input
-              placeholder="Search documents..."
+              placeholder="Search by name or filename…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-9 text-sm"
               style={{ fontFamily: "Inter, sans-serif", borderColor: "#e8e3d8" }}
             />
           </div>
+          {/* Type filter */}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[180px] text-sm" style={{ fontFamily: "Inter, sans-serif", borderColor: "#e8e3d8" }}>
+            <SelectTrigger className="w-[170px] text-sm" style={{ fontFamily: "Inter, sans-serif", borderColor: "#e8e3d8" }}>
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -315,9 +327,33 @@ export default function Documents() {
               {DOC_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          {/* Project filter */}
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-[190px] text-sm" style={{ fontFamily: "Inter, sans-serif", borderColor: "#e8e3d8" }}>
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              <SelectItem value="none">No Project (General)</SelectItem>
+              {(projectsList ?? []).map(p => (
+                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Result count + clear */}
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#a09080" }}>
             {filtered.length} document{filtered.length !== 1 ? "s" : ""}
           </span>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors hover:bg-[#f5e9cc]"
+              style={{ fontFamily: "Inter, sans-serif", color: "#d29c3c", border: "1px solid #d29c3c", background: "#fdf6e8" }}
+            >
+              <X size={11} />
+              Clear filters ({activeFilterCount})
+            </button>
+          )}
         </div>
 
         {/* Bulk action bar — appears when items are selected */}
