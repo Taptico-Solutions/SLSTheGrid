@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageHeader, StatusBadge, EmptyState, GoldButton, LoadingSpinner } from "@/components/SLSComponents";
-import { FolderOpen, Upload, FileText, Download, Trash2, Search, CheckSquare, Square, Archive, X } from "lucide-react";
+import { FolderOpen, Upload, FileText, Download, Trash2, Search, CheckSquare, Square, Archive, X, History, Clock } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -60,6 +61,58 @@ export default function Documents() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [zipping, setZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState(0);
+
+  // Version history state
+  const [historyDocId, setHistoryDocId] = useState<number | null>(null);
+  const [historyDoc, setHistoryDoc] = useState<{ id: number; name: string; currentVersion: number } | null>(null);
+  const [uploadingVersion, setUploadingVersion] = useState(false);
+  const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
+  const [newVersionNotes, setNewVersionNotes] = useState("");
+
+  const { data: versions, refetch: refetchVersions } = trpc.documents.listVersions.useQuery(
+    { documentId: historyDocId! },
+    { enabled: historyDocId !== null }
+  );
+
+  const uploadVersion = trpc.documents.uploadVersion.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      refetchVersions();
+      setNewVersionFile(null);
+      setNewVersionNotes("");
+      toast.success(`Version ${data.versionNumber} uploaded successfully`);
+    },
+    onError: (err) => toast.error(`Version upload failed: ${err.message}`),
+  });
+
+  async function handleUploadVersion() {
+    if (!newVersionFile || !historyDocId) return;
+    const MAX_SIZE = 25 * 1024 * 1024;
+    if (newVersionFile.size > MAX_SIZE) {
+      toast.error(`File too large. Maximum size is 25 MB`);
+      return;
+    }
+    setUploadingVersion(true);
+    try {
+      const arrayBuffer = await newVersionFile.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]!);
+      const base64 = btoa(binary);
+      await uploadVersion.mutateAsync({
+        documentId: historyDocId,
+        fileDataBase64: base64,
+        fileName: newVersionFile.name,
+        mimeType: newVersionFile.type || "application/octet-stream",
+        fileSize: newVersionFile.size,
+        notes: newVersionNotes.trim() || undefined,
+      });
+    } catch (err: any) {
+      if (!uploadVersion.error) toast.error(`Version upload failed: ${err?.message ?? "Unknown error"}`);
+    } finally {
+      setUploadingVersion(false);
+    }
+  }
 
   const { data: docs, isLoading, refetch } = trpc.documents.listAll.useQuery();
 
@@ -326,7 +379,7 @@ export default function Documents() {
                         : <Square size={15} style={{ color: "#c0b8a8" }} />}
                     </button>
                   </th>
-                  {["Name", "Type", "Project", "Size", "Uploaded", "Status", ""].map(h => (
+                  {["Name", "Type", "Project", "Size", "Uploaded", "Status", "Ver.", ""].map(h => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left"
@@ -383,6 +436,23 @@ export default function Documents() {
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3"><StatusBadge status={doc.status} /></td>
+                      {/* Version badge */}
+                      <td className="px-4 py-3">
+                        <span
+                          style={{
+                            fontFamily: "Inter, sans-serif",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            color: (doc as any).currentVersion > 1 ? "#d29c3c" : "#a09080",
+                            background: (doc as any).currentVersion > 1 ? "#fdf6e8" : "#f5f2ec",
+                            borderRadius: 4,
+                            padding: "2px 6px",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          v{(doc as any).currentVersion ?? 1}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <a
@@ -390,10 +460,20 @@ export default function Documents() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 rounded hover:bg-[#f5e9cc] transition-colors"
-                            title="Download"
+                            title="Download current version"
                           >
                             <Download size={13} style={{ color: "#d29c3c" }} />
                           </a>
+                          <button
+                            onClick={() => {
+                              setHistoryDocId(doc.id);
+                              setHistoryDoc({ id: doc.id, name: doc.name, currentVersion: (doc as any).currentVersion ?? 1 });
+                            }}
+                            className="p-1.5 rounded hover:bg-[#f5e9cc] transition-colors"
+                            title="Version history"
+                          >
+                            <History size={13} style={{ color: "#7a6e62" }} />
+                          </button>
                           {isInternal && (
                             <button
                               onClick={() => deleteDoc.mutate({ id: doc.id })}
@@ -412,6 +492,100 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      {/* Version History Sheet */}
+      <Sheet open={historyDocId !== null} onOpenChange={open => { if (!open) { setHistoryDocId(null); setHistoryDoc(null); setNewVersionFile(null); setNewVersionNotes(""); } }}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto" style={{ background: "#fdfaf5" }}>
+          <SheetHeader>
+            <SheetTitle style={{ fontFamily: "Roboto Slab, serif", textTransform: "uppercase", letterSpacing: "0.04em", color: "#1b110b", fontSize: "14px" }}>
+              Version History
+            </SheetTitle>
+            {historyDoc && (
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#7a6e62", marginTop: 2 }}>
+                {historyDoc.name} &mdash; Current: v{historyDoc.currentVersion}
+              </p>
+            )}
+          </SheetHeader>
+
+          {/* Upload new version */}
+          {isInternal && (
+            <div className="mt-5 p-4 rounded-lg" style={{ background: "#fff", border: "1px solid #e8e3d8" }}>
+              <p style={{ fontFamily: "Roboto Slab, serif", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a6e62", marginBottom: 10 }}>Upload New Version</p>
+              <div className="space-y-3">
+                <div>
+                  <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a6e62" }}>File <span style={{ color: "#a09080", fontWeight: 400, textTransform: "none" }}>(max 25 MB)</span></Label>
+                  <input
+                    type="file"
+                    onChange={e => setNewVersionFile(e.target.files?.[0] ?? null)}
+                    className="w-full mt-1 text-sm"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                    disabled={uploadingVersion}
+                  />
+                  {newVersionFile && (
+                    <p className="text-xs mt-1" style={{ color: "#a09080", fontFamily: "Inter, sans-serif" }}>
+                      {newVersionFile.name} — {formatBytes(newVersionFile.size)}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a6e62" }}>Change Notes <span style={{ color: "#a09080", fontWeight: 400, textTransform: "none" }}>(optional)</span></Label>
+                  <Input
+                    value={newVersionNotes}
+                    onChange={e => setNewVersionNotes(e.target.value)}
+                    placeholder="e.g. Updated fixture schedule for Phase 2"
+                    style={{ borderColor: "#e8e3d8", fontFamily: "Inter, sans-serif", fontSize: "12px" }}
+                    disabled={uploadingVersion}
+                  />
+                </div>
+                  <GoldButton
+                  variant="filled"
+                  onClick={handleUploadVersion}
+                  disabled={uploadingVersion || !newVersionFile}
+                >
+                  {uploadingVersion ? "Uploading…" : `Upload as v${(historyDoc?.currentVersion ?? 1) + 1}`}
+                </GoldButton>
+              </div>
+            </div>
+          )}
+
+          {/* Version list */}
+          <div className="mt-5 space-y-2">
+            <p style={{ fontFamily: "Roboto Slab, serif", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7a6e62", marginBottom: 8 }}>Previous Versions</p>
+            {!versions || versions.length === 0 ? (
+              <div className="py-8 text-center" style={{ color: "#a09080", fontFamily: "Inter, sans-serif", fontSize: "12px" }}>
+                <Clock size={24} className="mx-auto mb-2" style={{ color: "#c0b8a8" }} />
+                No previous versions yet. Upload a new version above to start tracking history.
+              </div>
+            ) : (
+              versions.map(v => (
+                <div key={v.id} className="flex items-start justify-between p-3 rounded-lg" style={{ background: "#fff", border: "1px solid #e8e3d8" }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 700, color: "#d29c3c", background: "#fdf6e8", borderRadius: 4, padding: "1px 6px" }}>v{v.versionNumber}</span>
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#7a6e62" }}>{v.fileName ?? "—"}</span>
+                    </div>
+                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#a09080" }}>
+                      {new Date(v.createdAt).toLocaleDateString()} &bull; {formatBytes(v.fileSize)}
+                    </div>
+                    {v.notes && (
+                      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#5a4e42", marginTop: 3, fontStyle: "italic" }}>{v.notes}</p>
+                    )}
+                  </div>
+                  <a
+                    href={v.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 p-1.5 rounded hover:bg-[#f5e9cc] transition-colors flex-shrink-0"
+                    title="Download this version"
+                  >
+                    <Download size={13} style={{ color: "#d29c3c" }} />
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Upload dialog */}
       <Dialog open={showUpload} onOpenChange={handleDialogClose}>

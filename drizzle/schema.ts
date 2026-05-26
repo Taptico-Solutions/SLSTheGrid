@@ -186,6 +186,7 @@ export const documents = mysqlTable("documents", {
   mimeType: varchar("mimeType", { length: 128 }),
   fileSize: int("fileSize"),
   version: int("version").default(1).notNull(),
+  currentVersion: int("currentVersion").default(1).notNull(),
   parentDocumentId: int("parentDocumentId"),
   status: mysqlEnum("status", ["draft", "pending_review", "approved", "rejected", "archived"])
     .default("draft")
@@ -385,3 +386,20 @@ export const inviteTokens = mysqlTable("invite_tokens", {
 });
 export type InviteToken = typeof inviteTokens.$inferSelect;
 export type InsertInviteToken = typeof inviteTokens.$inferInsert;
+
+// ─── Document Versions ────────────────────────────────────────────────────────
+export const documentVersions = mysqlTable("document_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  versionNumber: int("versionNumber").notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileKey: text("fileKey").notNull(),
+  fileName: varchar("fileName", { length: 255 }),
+  mimeType: varchar("mimeType", { length: 128 }),
+  fileSize: int("fileSize"),
+  uploadedBy: int("uploadedBy").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DocumentVersion = typeof documentVersions.$inferSelect;
+export type InsertDocumentVersion = typeof documentVersions.$inferInsert;

@@ -9,6 +9,7 @@ import {
   activityLog,
   budgetItems,
   changeOrders,
+  documentVersions,
   documents,
   manufacturers,
   messages,
@@ -376,6 +377,80 @@ const documentsRouter = router({
         fileName: r.fileName ?? r.name,
         mimeType: r.mimeType ?? "application/octet-stream",
       }));
+    }),
+
+  // ── Version History ──────────────────────────────────────────────────────
+  listVersions: protectedProcedure
+    .input(z.object({ documentId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      // Fetch the parent document to verify access
+      const [doc] = await db.select().from(documents).where(eq(documents.id, input.documentId)).limit(1);
+      if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+      if (doc.projectId) {
+        const hasAccess = await checkProjectAccess(ctx.user.id, doc.projectId, ctx.user.role);
+        if (!hasAccess) throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const versions = await db
+        .select()
+        .from(documentVersions)
+        .where(eq(documentVersions.documentId, input.documentId))
+        .orderBy(desc(documentVersions.versionNumber));
+      // Also include the current live version as "v{currentVersion}" if no version rows yet
+      return versions;
+    }),
+
+  uploadVersion: protectedProcedure
+    .input(z.object({
+      documentId: z.number(),
+      fileDataBase64: z.string(),
+      fileName: z.string(),
+      mimeType: z.string(),
+      fileSize: z.number().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Fetch parent document
+      const [doc] = await db.select().from(documents).where(eq(documents.id, input.documentId)).limit(1);
+      if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+      if (doc.projectId) {
+        const hasAccess = await checkProjectAccess(ctx.user.id, doc.projectId, ctx.user.role);
+        if (!hasAccess) throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      // Snapshot current version into document_versions before replacing
+      const nextVersion = (doc.currentVersion ?? doc.version ?? 1) + 1;
+      await db.insert(documentVersions).values({
+        documentId: doc.id,
+        versionNumber: doc.currentVersion ?? doc.version ?? 1,
+        fileUrl: doc.fileUrl,
+        fileKey: doc.fileKey,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        fileSize: doc.fileSize ?? undefined,
+        uploadedBy: doc.uploadedBy,
+        notes: null,
+        createdAt: doc.createdAt,
+      });
+      // Upload the new file
+      const buffer = Buffer.from(input.fileDataBase64, "base64");
+      const fileKey = `sls-docs/${ctx.user.id}/${nanoid()}-${input.fileName}`;
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      // Update the parent document to point at the new file
+      await db.update(documents).set({
+        fileUrl: url,
+        fileKey,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        fileSize: input.fileSize,
+        currentVersion: nextVersion,
+        version: nextVersion,
+        updatedAt: new Date(),
+      }).where(eq(documents.id, input.documentId));
+      await logActivity(ctx.user.id, "document_version_uploaded", "document", input.documentId, `v${nextVersion}: ${doc.name}`, doc.projectId ?? undefined);
+      return { id: input.documentId, versionNumber: nextVersion, url };
     }),
 });
 

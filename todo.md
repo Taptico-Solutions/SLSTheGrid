@@ -91,3 +91,15 @@
 - [x] Verify projectId is already accepted by the server upload procedure (confirmed, no backend changes needed)
 - [x] Write tests for project-linked upload (covered by existing documents.test.ts)
 - [x] Save checkpoint and deliver
+
+## Feature: Document Version History
+- [x] Add document_versions table to drizzle/schema.ts (documentId, versionNumber, fileUrl, fileKey, fileName, fileSize, mimeType, uploadedBy, createdAt, notes)
+- [x] Apply CREATE TABLE migration to the database
+- [x] Add documents.uploadVersion tRPC procedure (creates new version row, bumps currentVersion on parent document)
+- [x] Add documents.listVersions tRPC procedure (returns all versions for a document ordered newest first)
+- [x] Add currentVersion column to documents table
+- [x] Build version history Sheet in Documents.tsx (opens per-document, lists all versions with download links)
+- [x] Add "Upload New Version" form inside the version history Sheet
+- [x] Show version badge (v1, v2...) on each document row in the vault table
+- [x] Write tests for uploadVersion and listVersions procedures (31/31 passing)
+- [x] Save checkpoint and deliver
