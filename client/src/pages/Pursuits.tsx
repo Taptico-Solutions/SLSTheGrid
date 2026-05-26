@@ -351,9 +351,12 @@ function PursuitFormModal({ open, onClose, initial, onSaved }: PursuitFormProps)
 
 // ─── CSV Import Modal ─────────────────────────────────────────────────────────
 function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void }) {
-  const [csvText, setCsvText] = useState("");
-  const [preview, setPreview] = useState<any[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
+  const [preview, setPreview] = useState<Record<string, string>[]>([]);
+  const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
@@ -364,82 +367,109 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
       toast.success(`${data.imported} records imported to Chase List!`);
       onImported();
       onClose();
+      resetState();
     },
     onError: (e) => toast.error("Import failed", { description: e.message }),
   });
 
-  function parseCSV(text: string) {
-    const lines = text.trim().split("\n").filter(Boolean);
-    if (lines.length < 2) { setError("CSV must have a header row and at least one data row."); return; }
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""));
-    const rows = lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
-      const obj: Record<string, string> = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
-      return obj;
-    });
-    setPreview(rows.slice(0, 5));
+  function resetState() {
+    setFileName("");
+    setAllRows([]);
+    setPreview([]);
+    setPreviewHeaders([]);
     setError("");
-    return rows;
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function parseRowsFromSheet(XLSX: any, workbook: any) {
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    // Use sheet_to_json for clean structured data — no CSV conversion
+    const jsonRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    if (jsonRows.length === 0) { setError("The spreadsheet appears to be empty."); return; }
+    // Normalize header keys
+    const normalized = jsonRows.map(row => {
+      const out: Record<string, string> = {};
+      Object.entries(row).forEach(([k, v]) => {
+        const key = String(k).trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+        out[key] = String(v ?? "").trim();
+      });
+      return out;
+    });
+    const headers = Object.keys(normalized[0]);
+    setAllRows(normalized);
+    setPreview(normalized.slice(0, 5));
+    setPreviewHeaders(headers.slice(0, 7));
+    setError("");
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setLoading(true);
+    setError("");
+    setFileName(file.name);
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext === "xls" || ext === "xlsx") {
-      // Parse XLS/XLSX using the xlsx library
-      import("xlsx").then(XLSX => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const csv = XLSX.utils.sheet_to_csv(sheet);
-          setCsvText(csv);
-          parseCSV(csv);
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    } else {
+    import("xlsx").then(XLSX => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        setCsvText(text);
-        parseCSV(text);
+        try {
+          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          parseRowsFromSheet(XLSX, workbook);
+        } catch {
+          setError("Could not read the file. Make sure it is a valid Excel or CSV file.");
+        } finally {
+          setLoading(false);
+        }
       };
-      reader.readAsText(file);
-    }
+      reader.onerror = () => { setError("Failed to read file."); setLoading(false); };
+      if (ext === "csv" || ext === "txt") {
+        reader.readAsText(file);
+        // Re-parse as text for CSV
+        reader.onload = (ev) => {
+          try {
+            const text = ev.target?.result as string;
+            const wb = XLSX.read(text, { type: "string" });
+            parseRowsFromSheet(XLSX, wb);
+          } catch {
+            setError("Could not parse the CSV file.");
+          } finally {
+            setLoading(false);
+          }
+        };
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
   }
 
   function handleImport() {
-    const rows = parseCSV(csvText);
-    if (!rows || rows.length === 0) return;
-    const mapped = rows.map(r => ({
-      companyName: r.company_name || r.company || r.companyname || "Unknown Company",
-      projectName: r.project_name || r.project || r.projectname || "Unnamed Project",
+    if (allRows.length === 0) return;
+    const mapped = allRows.map(r => ({
+      companyName: r.company_name || r.company || r.companyname || r.account || r.account_name || "Unknown Company",
+      projectName: r.project_name || r.project || r.projectname || r.opportunity || r.opportunity_name || "Unnamed Project",
       projectType: r.project_type || r.type || undefined,
-      marketSector: r.market_sector || r.sector || undefined,
+      marketSector: r.market_sector || r.sector || r.vertical || undefined,
       city: r.city || undefined,
-      state: r.state || undefined,
-      stage: r.stage || undefined,
+      state: r.state || r.st || undefined,
+      stage: r.stage || r.pipeline_stage || r.status || undefined,
       priority: r.priority || undefined,
-      source: r.source || undefined,
-      estimatedValue: r.estimated_value || r.value || undefined,
-      primaryContactName: r.primary_contact_name || r.contact_name || r.contact || undefined,
-      primaryContactEmail: r.primary_contact_email || r.email || undefined,
-      primaryContactPhone: r.primary_contact_phone || r.phone || undefined,
-      ownerName: r.owner_name || r.owner || undefined,
+      source: r.source || r.lead_source || undefined,
+      estimatedValue: r.estimated_value || r.value || r.amount || r.deal_value || undefined,
+      primaryContactName: r.primary_contact_name || r.contact_name || r.contact || r.primary_contact || undefined,
+      primaryContactEmail: r.primary_contact_email || r.email || r.contact_email || undefined,
+      primaryContactPhone: r.primary_contact_phone || r.phone || r.contact_phone || undefined,
+      ownerName: r.owner_name || r.owner || r.rep || r.sales_rep || undefined,
       architectName: r.architect_name || r.architect || undefined,
       generalContractorName: r.gc_name || r.general_contractor || r.gc || undefined,
-      notes: r.notes || undefined,
-    })).filter(r => r.companyName && r.projectName);
+      notes: r.notes || r.description || r.comments || undefined,
+    })).filter(r => r.companyName !== "Unknown Company" || r.projectName !== "Unnamed Project");
 
     importMutation.mutate({ rows: mapped });
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); resetState(); } }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -447,38 +477,29 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="rounded-lg p-3 text-xs" style={{ background: "#f9f6f0", border: "1px solid #e6dec2", fontFamily: "Inter, sans-serif", color: "#7a6e62", lineHeight: 1.6 }}>
-            <strong style={{ color: "#1b110b" }}>Accepts CSV, XLS, or XLSX files.</strong> Flexible column mapping — common column names are auto-detected.<br />
-            <code>company_name, project_name, project_type, city, state, stage, priority, estimated_value, primary_contact_name, primary_contact_email, notes</code>
-          </div>
 
+          {/* File drop zone */}
           <div>
-            <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Upload File (CSV, XLS, XLSX)
-            </Label>
-            <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" onChange={handleFile} className="hidden" />
+            <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleFile} className="hidden" />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="mt-1 w-full flex items-center justify-center gap-2 py-6 rounded-lg border-2 border-dashed transition-colors hover:border-[#d29c3c] hover:bg-[#fdf8ef]"
-              style={{ borderColor: "#e6dec2", fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#7a6e62" }}
+              className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed transition-colors hover:border-[#d29c3c] hover:bg-[#fdf8ef]"
+              style={{ borderColor: fileName ? "#d29c3c" : "#e6dec2", background: fileName ? "#fdf8ef" : undefined }}
             >
-              <Upload size={16} style={{ color: "#d29c3c" }} />
-              Click to upload CSV, XLS, or XLSX
+              {loading ? (
+                <><div className="w-5 h-5 border-2 border-[#d29c3c] border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>Reading file...</span></>
+              ) : fileName ? (
+                <><FileText size={20} style={{ color: "#d29c3c" }} />
+                <span className="text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>{fileName}</span>
+                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>{allRows.length} rows detected — click to change file</span></>
+              ) : (
+                <><Upload size={20} style={{ color: "#d29c3c" }} />
+                <span className="text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>Click to upload your Chase List</span>
+                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>Supports Excel (.xls, .xlsx) and CSV files</span></>
+              )}
             </button>
-          </div>
-
-          <div>
-            <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Or Paste CSV Text
-            </Label>
-            <Textarea
-              value={csvText}
-              onChange={e => { setCsvText(e.target.value); parseCSV(e.target.value); }}
-              className="mt-1 font-mono text-xs"
-              rows={6}
-              placeholder={"company_name,project_name,city,state,estimated_value\nCousins Properties,Buckhead Tower,Atlanta,GA,2500000"}
-            />
           </div>
 
           {error && (
@@ -487,40 +508,47 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
             </div>
           )}
 
+          {/* Preview table */}
           {preview.length > 0 && (
             <div>
-              <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>Preview (first 5 rows):</div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>Preview — first 5 of {allRows.length} rows</span>
+                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>Showing first 7 columns</span>
+              </div>
               <div className="overflow-x-auto rounded border" style={{ borderColor: "#e6dec2" }}>
                 <table className="text-xs w-full">
                   <thead style={{ background: "#f9f6f0" }}>
                     <tr>
-                      {Object.keys(preview[0]).slice(0, 6).map(k => (
-                        <th key={k} className="px-2 py-1.5 text-left" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62", fontWeight: 600 }}>{k}</th>
+                      {previewHeaders.map(k => (
+                        <th key={k} className="px-2 py-1.5 text-left whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62", fontWeight: 600 }}>{k}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {preview.map((row, i) => (
                       <tr key={i} className="border-t" style={{ borderColor: "#f0ebe0" }}>
-                        {Object.values(row).slice(0, 6).map((v: any, j) => (
-                          <td key={j} className="px-2 py-1.5 truncate max-w-[120px]" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>{v || "—"}</td>
+                        {previewHeaders.map((h, j) => (
+                          <td key={j} className="px-2 py-1.5 truncate max-w-[140px]" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>{row[h] || "—"}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs mt-2" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>
+                Column names are auto-mapped. Common field names like <em>company</em>, <em>project</em>, <em>value</em>, <em>owner</em>, <em>stage</em> are all recognized.
+              </p>
             </div>
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose} style={{ fontFamily: "Inter, sans-serif", fontSize: "12px" }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { onClose(); resetState(); }} style={{ fontFamily: "Inter, sans-serif", fontSize: "12px" }}>Cancel</Button>
             <Button
               onClick={handleImport}
-              disabled={!csvText.trim() || importMutation.isPending}
-              style={{ background: "#d29c3c", color: "#fff", fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600 }}
+              disabled={allRows.length === 0 || importMutation.isPending}
+              style={{ background: allRows.length > 0 ? "#d29c3c" : undefined, color: allRows.length > 0 ? "#fff" : undefined, fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600 }}
             >
-              {importMutation.isPending ? "Importing..." : `Import ${preview.length > 0 ? `${preview.length}+ rows` : ""}`}
+              {importMutation.isPending ? "Importing..." : allRows.length > 0 ? `Import ${allRows.length} Records` : "Select a File"}
             </Button>
           </div>
         </div>
