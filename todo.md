@@ -111,3 +111,14 @@
 - [x] Wire all three filters together with client-side useMemo filtering
 - [x] Show active filter count badge and a Clear Filters button
 - [x] Save checkpoint and deliver
+## Feature: Prospect Radar Module (commit d8ed4ad)
+- [x] Apply drizzle/0003_prospect_radar.sql migration (prospect_leads + prospect_signals tables)
+- [x] Add prospect radar schema objects to drizzle/schema.ts (prospectLeads, prospectSignals, enums, types, INTERNAL_ROLES)
+- [x] Write and register server/routers/prospectRadar.ts (list, get, create, update, addSignal, loadDemo)
+- [x] Register prospectRadarRouter in appRouter in server/routers.ts
+- [x] Port frontend page to client/src/pages/ProspectRadar.tsx (adapted for Vite/Wouter/shadcn stack)
+- [x] Add /prospect-radar route to client/src/App.tsx
+- [x] Add Prospect Radar sidebar nav item to SLSLayout.tsx (gated to sls_admin, sls_rep, sls_pm, admin)
+- [x] Write 14 Vitest tests for prospect radar (input validation, signal validation, money helper, enum coverage)
+- [x] 45/45 tests passing, 0 TypeScript errors
+- [x] Save checkpoint and deliver

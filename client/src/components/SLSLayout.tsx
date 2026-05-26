@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Radar,
   Settings,
   Search,
   ShieldCheck,
@@ -166,6 +167,12 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
       href: "/timeline",
       icon: <BarChart3 size={18} />,
       roles: ["sls_admin", "sls_pm", "admin"],
+    },
+    {
+      label: "Prospect Radar",
+      href: "/prospect-radar",
+      icon: <Radar size={18} />,
+      roles: ["sls_admin", "sls_rep", "sls_pm", "admin"],
     },
   ];
 

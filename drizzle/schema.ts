@@ -403,3 +403,100 @@ export const documentVersions = mysqlTable("document_versions", {
 });
 export type DocumentVersion = typeof documentVersions.$inferSelect;
 export type InsertDocumentVersion = typeof documentVersions.$inferInsert;
+
+// ─── Prospect Radar ───────────────────────────────────────────────────────────
+export const prospectLeads = mysqlTable("prospect_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  projectName: varchar("project_name", { length: 255 }).notNull(),
+  projectType: varchar("project_type", { length: 128 }).notNull(),
+  marketSector: varchar("market_sector", { length: 128 }),
+  location: varchar("location", { length: 255 }).notNull(),
+  status: mysqlEnum("status", [
+    "new",
+    "researching",
+    "contacted",
+    "qualified",
+    "proposal",
+    "won",
+    "lost",
+    "nurture",
+  ])
+    .notNull()
+    .default("new"),
+  buyingStage: mysqlEnum("buying_stage", [
+    "early_planning",
+    "design",
+    "pricing",
+    "bidding",
+    "awarded",
+    "procurement",
+  ])
+    .notNull()
+    .default("early_planning"),
+  heatScore: int("heat_score").notNull().default(50),
+  confidenceScore: int("confidence_score").notNull().default(50),
+  estimatedProjectValue: decimal("estimated_project_value", { precision: 14, scale: 2 }),
+  estimatedLightingValue: decimal("estimated_lighting_value", { precision: 14, scale: 2 }),
+  decisionWindow: varchar("decision_window", { length: 128 }),
+  expectedBidDate: varchar("expected_bid_date", { length: 10 }),
+  expectedAwardDate: varchar("expected_award_date", { length: 10 }),
+  constructionStartDate: varchar("construction_start_date", { length: 10 }),
+  ownerName: varchar("owner_name", { length: 255 }),
+  architectName: varchar("architect_name", { length: 255 }),
+  generalContractorName: varchar("general_contractor_name", { length: 255 }),
+  electricalEngineerName: varchar("electrical_engineer_name", { length: 255 }),
+  primaryContactName: varchar("primary_contact_name", { length: 255 }),
+  primaryContactTitle: varchar("primary_contact_title", { length: 255 }),
+  primaryContactEmail: varchar("primary_contact_email", { length: 320 }),
+  primaryContactPhone: varchar("primary_contact_phone", { length: 64 }),
+  primarySignal: varchar("primary_signal", { length: 255 }).notNull(),
+  sourceName: varchar("source_name", { length: 255 }),
+  sourceUrl: text("source_url"),
+  summary: text("summary"),
+  recommendedNextStep: text("recommended_next_step"),
+  notes: text("notes"),
+  assignedRepId: int("assigned_rep_id"),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProspectLead = typeof prospectLeads.$inferSelect;
+export type InsertProspectLead = typeof prospectLeads.$inferInsert;
+export type ProspectLeadStatus = ProspectLead["status"];
+export type ProspectBuyingStage = ProspectLead["buyingStage"];
+
+export const prospectSignals = mysqlTable("prospect_signals", {
+  id: int("id").autoincrement().primaryKey(),
+  prospectId: int("prospect_id").notNull(),
+  type: mysqlEnum("type", [
+    "permit",
+    "plan_room",
+    "construction_start",
+    "architect_activity",
+    "gc_award",
+    "budget_approved",
+    "renovation",
+    "tenant_improvement",
+    "hospitality_pipeline",
+    "municipal_bid",
+    "relationship",
+    "news",
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  signalDate: varchar("signal_date", { length: 10 }),
+  sourceName: varchar("source_name", { length: 255 }),
+  sourceUrl: text("source_url"),
+  confidenceScore: int("confidence_score").notNull().default(50),
+  impactScore: int("impact_score").notNull().default(50),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ProspectSignal = typeof prospectSignals.$inferSelect;
+export type InsertProspectSignal = typeof prospectSignals.$inferInsert;
+export type ProspectSignalType = ProspectSignal["type"];
+
+// Role helpers for internal-only access
+export const INTERNAL_ROLES = ["sls_admin", "sls_rep", "sls_pm", "admin"] as const;
