@@ -500,3 +500,103 @@ export type ProspectSignalType = ProspectSignal["type"];
 
 // Role helpers for internal-only access
 export const INTERNAL_ROLES = ["sls_admin", "sls_rep", "sls_pm", "admin"] as const;
+
+
+// ─── CRM Pursuits ─────────────────────────────────────────────────────────────
+export const pursuitStageValues = [
+  "identified",
+  "qualifying",
+  "proposal",
+  "negotiation",
+  "won",
+  "lost",
+  "on_hold",
+] as const;
+
+export const pursuitSourceValues = [
+  "referral",
+  "cold_outreach",
+  "inbound",
+  "trade_show",
+  "existing_client",
+  "architect_spec",
+  "gc_relationship",
+  "permit_data",
+  "other",
+] as const;
+
+export const pursuitPriorityValues = ["low", "medium", "high", "critical"] as const;
+
+export const pursuits = mysqlTable("pursuits", {
+  id: int("id").autoincrement().primaryKey(),
+  // Company & project identity
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  projectName: varchar("project_name", { length: 255 }).notNull(),
+  projectType: varchar("project_type", { length: 128 }),
+  marketSector: varchar("market_sector", { length: 128 }),
+  // Location
+  address: text("address"),
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 64 }),
+  // CRM stage & priority
+  stage: mysqlEnum("stage", pursuitStageValues).notNull().default("identified"),
+  priority: mysqlEnum("priority", pursuitPriorityValues).notNull().default("medium"),
+  source: mysqlEnum("source", pursuitSourceValues).default("other"),
+  // Financials
+  estimatedValue: decimal("estimated_value", { precision: 14, scale: 2 }),
+  estimatedLightingValue: decimal("estimated_lighting_value", { precision: 14, scale: 2 }),
+  // Key contacts
+  primaryContactName: varchar("primary_contact_name", { length: 255 }),
+  primaryContactTitle: varchar("primary_contact_title", { length: 255 }),
+  primaryContactEmail: varchar("primary_contact_email", { length: 320 }),
+  primaryContactPhone: varchar("primary_contact_phone", { length: 64 }),
+  ownerName: varchar("owner_name", { length: 255 }),
+  architectName: varchar("architect_name", { length: 255 }),
+  generalContractorName: varchar("gc_name", { length: 255 }),
+  // Dates
+  expectedCloseDate: varchar("expected_close_date", { length: 10 }),
+  lastContactDate: varchar("last_contact_date", { length: 10 }),
+  nextFollowUpDate: varchar("next_follow_up_date", { length: 10 }),
+  // Intelligence
+  notes: text("notes"),
+  nextStep: text("next_step"),
+  winProbability: int("win_probability").default(50),
+  // Assignment
+  assignedRepId: int("assigned_rep_id"),
+  // Linked project (if converted)
+  linkedProjectId: int("linked_project_id"),
+  // Import tracking
+  importBatchId: varchar("import_batch_id", { length: 64 }),
+  // Metadata
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Pursuit = typeof pursuits.$inferSelect;
+export type InsertPursuit = typeof pursuits.$inferInsert;
+export type PursuitStage = typeof pursuitStageValues[number];
+export type PursuitSource = typeof pursuitSourceValues[number];
+export type PursuitPriority = typeof pursuitPriorityValues[number];
+
+// ─── Pursuit Activity Log ─────────────────────────────────────────────────────
+export const pursuitActivities = mysqlTable("pursuit_activities", {
+  id: int("id").autoincrement().primaryKey(),
+  pursuitId: int("pursuit_id").notNull(),
+  userId: int("user_id").notNull(),
+  type: mysqlEnum("type", [
+    "note",
+    "call",
+    "email",
+    "meeting",
+    "stage_change",
+    "import",
+    "follow_up",
+  ]).notNull().default("note"),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PursuitActivity = typeof pursuitActivities.$inferSelect;
+export type InsertPursuitActivity = typeof pursuitActivities.$inferInsert;

@@ -8,6 +8,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -21,6 +22,7 @@ import {
   Settings,
   Search,
   ShieldCheck,
+  Target,
   Users,
   Zap,
 } from "lucide-react";
@@ -99,6 +101,24 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // Collapsible department sections — persisted in localStorage
+  const [sectionsOpen, setSectionsOpen] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("sls-nav-sections");
+      return saved ? JSON.parse(saved) : { pm: true, sales: true, admin: true };
+    } catch {
+      return { pm: true, sales: true, admin: true };
+    }
+  });
+
+  function toggleSection(key: string) {
+    setSectionsOpen((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem("sls-nav-sections", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
   // Global keyboard shortcut: Cmd/Ctrl+K opens search
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -147,39 +167,34 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
 
   const role = user?.role as UserRole | undefined;
 
-  const primaryNav: NavItem[] = [
+  // ── Department nav sections ──────────────────────────────────────────────────
+
+  // Always-visible top items (no department header)
+  const topNav: NavItem[] = [
     { label: "Dashboard", href: "/", icon: <LayoutDashboard size={18} /> },
-    { label: "Projects", href: "/projects", icon: <Building2 size={18} /> },
-    { label: "Documents", href: "/documents", icon: <FolderOpen size={18} /> },
+    { label: "Notifications", href: "/notifications", icon: <Bell size={18} />, badge: unreadCount },
     { label: "Messages", href: "/messages", icon: <MessageSquare size={18} />, badge: unreadMessages },
   ];
 
-  const toolsNav: NavItem[] = [
+  // Project Management department
+  const pmNav: NavItem[] = [
+    { label: "Projects", href: "/projects", icon: <Building2 size={18} /> },
+    { label: "Documents", href: "/documents", icon: <FolderOpen size={18} /> },
     { label: "Submittals", href: "/submittals", icon: <ClipboardCheck size={18} /> },
-    {
-      label: "Budget Overview",
-      href: "/budget",
-      icon: <DollarSign size={18} />,
-      roles: ["sls_admin", "sls_pm", "admin"],
-    },
-    {
-      label: "Timeline Overview",
-      href: "/timeline",
-      icon: <BarChart3 size={18} />,
-      roles: ["sls_admin", "sls_pm", "admin"],
-    },
-    {
-      label: "Prospect Radar",
-      href: "/prospect-radar",
-      icon: <Radar size={18} />,
-      roles: ["sls_admin", "sls_rep", "sls_pm", "admin"],
-    },
-  ];
-
-  const bottomNav: NavItem[] = [
+    { label: "Budget Overview", href: "/budget", icon: <DollarSign size={18} />, roles: ["sls_admin", "sls_pm", "admin"] },
+    { label: "Timeline Overview", href: "/timeline", icon: <BarChart3 size={18} />, roles: ["sls_admin", "sls_pm", "admin"] },
     { label: "Team Directory", href: "/team", icon: <Users size={18} /> },
     { label: "Manufacturers", href: "/manufacturers", icon: <BookOpen size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
-    { label: "Notifications", href: "/notifications", icon: <Bell size={18} />, badge: unreadCount },
+  ];
+
+  // Sales & CRM department
+  const salesNav: NavItem[] = [
+    { label: "Prospect Radar", href: "/prospect-radar", icon: <Radar size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
+    { label: "Pursuits", href: "/pursuits", icon: <Target size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
+  ];
+
+  // Tools & Admin department
+  const adminNav: NavItem[] = [
     { label: "AI Copilot", href: "/copilot", icon: <Zap size={18} /> },
     { label: "Reports", href: "/reports", icon: <FileText size={18} />, roles: ["sls_admin", "sls_pm", "admin"] },
     { label: "Settings", href: "/settings", icon: <Settings size={18} /> },
@@ -189,6 +204,65 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   function canSee(item: NavItem) {
     if (!item.roles) return true;
     return item.roles.includes(role ?? "user");
+  }
+
+  // Returns true if any item in the section is visible to this user
+  function sectionVisible(items: NavItem[]) {
+    return items.some(canSee);
+  }
+
+  function NavSection({
+    sectionKey,
+    label,
+    items,
+  }: {
+    sectionKey: string;
+    label: string;
+    items: NavItem[];
+  }) {
+    if (!sectionVisible(items)) return null;
+    const open = sectionsOpen[sectionKey] ?? true;
+    return (
+      <div className="mb-1">
+        {!collapsed ? (
+          <button
+            type="button"
+            onClick={() => toggleSection(sectionKey)}
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-colors hover:bg-white/5 group"
+          >
+            <span
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "#5a4e42",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              {label}
+            </span>
+            <ChevronDown
+              size={12}
+              style={{
+                color: "#5a4e42",
+                transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+                transition: "transform 200ms ease",
+              }}
+            />
+          </button>
+        ) : (
+          <div className="my-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+        )}
+        {(open || collapsed) && (
+          <div className="space-y-0.5">
+            {items.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   function NavLink({ item }: { item: NavItem }) {
@@ -275,36 +349,18 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
       </div>
 
       {/* Primary Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-0.5">
-        {primaryNav.map((item) => (
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        {/* Always-visible top items */}
+        {topNav.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
 
-        {/* Tools section */}
-        {!collapsed && (
-          <div className="pt-4 pb-1 px-3">
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#5a4e42", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              Tools
-            </span>
-          </div>
-        )}
-        {collapsed && <div className="my-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />}
-        {toolsNav.map((item) => (
-          <NavLink key={item.href} item={item} />
-        ))}
+        <div className="pt-2" />
 
-        {/* Bottom section */}
-        {!collapsed && (
-          <div className="pt-4 pb-1 px-3">
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#5a4e42", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              More
-            </span>
-          </div>
-        )}
-        {collapsed && <div className="my-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />}
-        {bottomNav.map((item) => (
-          <NavLink key={item.href} item={item} />
-        ))}
+        {/* Department sections */}
+        <NavSection sectionKey="pm" label="Project Management" items={pmNav} />
+        <NavSection sectionKey="sales" label="Sales & CRM" items={salesNav} />
+        <NavSection sectionKey="admin" label="Tools & Admin" items={adminNav} />
       </nav>
 
       {/* User Profile */}

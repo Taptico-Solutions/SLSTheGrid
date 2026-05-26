@@ -139,3 +139,25 @@
 - [x] Seed data: 1 project + products, milestones, budget items, change orders, submittals, team members, messages
 - [x] Write Vitest tests for seed data shape
 - [x] Save checkpoint and deliver
+
+## Feature: Collapsible Sidebar Departments + CRM Pursuits Module
+- [ ] Restructure SLSLayout sidebar into collapsible department sections (Project Management, Sales & CRM, Tools & Admin)
+- [ ] Persist collapse state per section in localStorage
+- [ ] Add Pursuits nav item under Sales & CRM section
+- [ ] Add pursuits table to drizzle schema (company, contact, value, stage, source, notes, assignedRep, etc.)
+- [ ] Run drizzle migration for pursuits table
+- [ ] Write pursuitsCRM tRPC router (list, get, create, update, delete, bulkImport)
+- [ ] Register pursuitsCRM router in appRouter
+- [ ] Build Pursuits page: list/table view with filters, status badges, sort, pagination
+- [ ] Add CSV/spreadsheet upload modal with column mapping and preview
+- [ ] Add Pursuit create/edit modal with full CRM fields
+- [ ] Write Vitest tests for pursuits schema validation and CSV parsing
+- [ ] Save checkpoint and deliver
+
+## Feature: Email Invite Delivery
+- [ ] Research Manus built-in email/notification API for sending transactional email
+- [ ] Add sendInviteEmail tRPC procedure to invites router (recipient email, invite URL, invite code, role, sender name)
+- [ ] Update Admin panel invite form: add recipient email field, wire Send Email button
+- [ ] Show sent confirmation with recipient address in the invite list
+- [ ] Write Vitest tests for email invite input validation
+- [ ] Save checkpoint and deliver

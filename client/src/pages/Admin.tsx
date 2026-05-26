@@ -117,6 +117,14 @@ export default function Admin() {
     onError: () => toast.error("Failed to update role"),
   });
 
+  const deleteUser = trpc.users.delete.useMutation({
+    onSuccess: (_, vars) => {
+      refetch();
+      toast.success("User deleted successfully.");
+    },
+    onError: (err) => toast.error("Failed to delete user", { description: err.message }),
+  });
+
   const loadSeed = trpc.seed.load.useMutation({
     onSuccess: (data) => {
       refetchSeed();
@@ -344,9 +352,37 @@ export default function Admin() {
                             <button onClick={() => setEditingId(null)} className="p-1.5 rounded hover:bg-gray-100 transition-colors text-xs" style={{ color: "#7a6e62" }}>✕</button>
                           </div>
                         ) : (
-                          <button onClick={() => { setEditingId(m.id); setEditRole(m.role ?? "user"); }} className="p-1.5 rounded hover:bg-[#f5e9cc] transition-colors">
-                            <Edit2 size={13} style={{ color: "#d29c3c" }} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => { setEditingId(m.id); setEditRole(m.role ?? "user"); }} className="p-1.5 rounded hover:bg-[#f5e9cc] transition-colors" title="Edit role">
+                              <Edit2 size={13} style={{ color: "#d29c3c" }} />
+                            </button>
+                            {m.id !== user?.id && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <button className="p-1.5 rounded hover:bg-red-50 transition-colors" title="Delete user">
+                                    <Trash2 size={13} style={{ color: "#dc2626" }} />
+                                  </button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete {m.name ?? "this user"}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently remove <strong>{m.name ?? "this user"}</strong> ({m.email ?? "no email"}) from the portal and all project team memberships. This cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteUser.mutate({ userId: m.id })}
+                                      className="bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                      Yes, Delete User
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

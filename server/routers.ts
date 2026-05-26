@@ -916,6 +916,22 @@ const usersRouter = router({
       await db.update(users).set({ isActive: false }).where(eq(users.id, input.userId));
       return { success: true };
     }),
+
+  delete: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot delete your own account." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Remove from project team memberships first
+      await db.delete(projectTeam).where(eq(projectTeam.userId, input.userId));
+      // Hard delete the user record
+      await db.delete(users).where(eq(users.id, input.userId));
+      await logActivity(ctx.user.id, "user_deleted", "user", input.userId, `User #${input.userId} deleted`);
+      return { success: true };
+    }),
 });
 
 // ─── Onboarding Router ──────────────────────────────────────────────────────
