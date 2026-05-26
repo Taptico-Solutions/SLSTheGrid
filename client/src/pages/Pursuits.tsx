@@ -528,7 +528,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
               ) : (
                 <><Upload size={20} style={{ color: "#d29c3c" }} />
                 <span className="text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif", color: "#1b110b" }}>Click to upload your Chase List</span>
-                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>Supports Excel (.xls, .xlsx) and CSV files</span></>
+                <span className="text-xs" style={{ fontFamily: "Inter, sans-serif", color: "#7a6e62" }}>Supports Excel (.xls, .xlsx) files</span></>
               )}
             </button>
           </div>
@@ -708,7 +708,7 @@ export default function Pursuits() {
               onClick={() => setShowImport(true)}
               style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", borderColor: "#e6dec2", color: "#7a6e62" }}
             >
-              <Upload size={13} className="mr-1.5" /> Import CSV
+              <Upload size={13} className="mr-1.5" /> Import Excel
             </Button>
             <Button
               size="sm"
@@ -730,7 +730,7 @@ export default function Pursuits() {
                 icon={<Target size={48} />}
                 title={pursuitList?.length === 0 ? "No Pursuits Yet" : "No Results"}
                 description={pursuitList?.length === 0
-                  ? "Add your first pursuit manually or import a list from CSV to start tracking your pipeline."
+                  ? "Add your first pursuit manually or import a list from Excel to start tracking your pipeline."
                   : "Try adjusting your search or filters."}
               />
               {pursuitList?.length === 0 && (
@@ -739,7 +739,7 @@ export default function Pursuits() {
                     <Plus size={13} className="mr-1.5" /> Add Pursuit
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setShowImport(true)} style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", borderColor: "#e6dec2" }}>
-                    <Upload size={13} className="mr-1.5" /> Import CSV
+                    <Upload size={13} className="mr-1.5" /> Import Excel
                   </Button>
                 </div>
               )}
