@@ -1,40 +1,187 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageHeader, GoldButton } from "@/components/SLSComponents";
 import { trpc } from "@/lib/trpc";
-import { User, Shield, Info, Save, CheckCircle2, AlertCircle, Pencil } from "lucide-react";
+import { User, Shield, Info, Save, CheckCircle2, AlertCircle, Camera, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 // ── Role display helpers ──────────────────────────────────────────────────────
 const ROLE_LABELS: Record<string, { label: string; desc: string; color: string }> = {
-  sls_admin: { label: "SLS Admin", desc: "Full access to all projects, users, and settings", color: "#d29c3c" },
-  admin:     { label: "SLS Admin", desc: "Full access to all projects, users, and settings", color: "#d29c3c" },
-  sls_rep:   { label: "SLS Sales Rep", desc: "Access to assigned projects and client communications", color: "#6b8fa3" },
-  sls_pm:    { label: "SLS Project Manager", desc: "Manage timelines, budgets, and orders", color: "#7a9a6b" },
-  client_architect: { label: "Client Architect / Designer", desc: "View projects and approve submittals", color: "#9a7ab5" },
-  client_gc: { label: "Client GC", desc: "View timelines, deliveries, and field notes", color: "#b58a4a" },
-  taptico:   { label: "Taptico Team", desc: "Internal Taptico workspace access", color: "#e05a5a" },
-  user:      { label: "Portal User", desc: "Read-only access to assigned content", color: "#888" },
+  sls_admin:        { label: "SLS Admin",                  desc: "Full access to all projects, users, and settings",         color: "#d29c3c" },
+  admin:            { label: "SLS Admin",                  desc: "Full access to all projects, users, and settings",         color: "#d29c3c" },
+  sls_rep:          { label: "SLS Sales Rep",              desc: "Access to assigned projects and client communications",    color: "#6b8fa3" },
+  sls_pm:           { label: "SLS Project Manager",        desc: "Manage timelines, budgets, and orders",                   color: "#7a9a6b" },
+  client_architect: { label: "Client Architect / Designer", desc: "View projects and approve submittals",                   color: "#9a7ab5" },
+  client_gc:        { label: "Client GC",                  desc: "View timelines, deliveries, and field notes",             color: "#b58a4a" },
+  taptico:          { label: "Taptico Team",               desc: "Internal Taptico workspace access",                       color: "#e05a5a" },
+  user:             { label: "Portal User",                desc: "Read-only access to assigned content",                    color: "#888"    },
 };
 
-function getInitials(name?: string | null): string {
+export function getInitials(name?: string | null): string {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
   return ((parts[0][0] ?? "") + (parts[parts.length - 1][0] ?? "")).toUpperCase();
 }
 
-function AvatarCircle({ name, size = 56 }: { name?: string | null; size?: number }) {
-  const initials = getInitials(name);
+// ── Shared AvatarDisplay — used here and importable by sidebar ────────────────
+export function AvatarDisplay({
+  name,
+  avatarUrl,
+  size = 56,
+  className = "",
+}: {
+  name?: string | null;
+  avatarUrl?: string | null;
+  size?: number;
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const showImage = avatarUrl && !imgError;
+
   return (
     <div
-      className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 select-none"
-      style={{ width: size, height: size, background: "linear-gradient(135deg, #d29c3c 0%, #b8832a 100%)", fontSize: size * 0.36 }}
+      className={`rounded-full flex-shrink-0 overflow-hidden ${className}`}
+      style={{ width: size, height: size }}
     >
-      {initials}
+      {showImage ? (
+        <img
+          src={avatarUrl}
+          alt="Avatar"
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div
+          className="w-full h-full flex items-center justify-center text-white font-bold select-none"
+          style={{
+            background: "linear-gradient(135deg, #d29c3c 0%, #b8832a 100%)",
+            fontSize: size * 0.36,
+          }}
+        >
+          {getInitials(name)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Clickable avatar with upload overlay ─────────────────────────────────────
+function UploadableAvatar({
+  name,
+  avatarUrl,
+  previewUrl,
+  uploading,
+  onFileSelected,
+  onRemove,
+  size = 72,
+}: {
+  name?: string | null;
+  avatarUrl?: string | null;
+  previewUrl?: string | null;
+  uploading: boolean;
+  onFileSelected: (file: File) => void;
+  onRemove: () => void;
+  size?: number;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const displayUrl = previewUrl || avatarUrl;
+  const [imgError, setImgError] = useState(false);
+  const showImage = displayUrl && !imgError;
+
+  // Reset error when URL changes
+  useEffect(() => setImgError(false), [displayUrl]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Image must be under 4 MB.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Please upload a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    onFileSelected(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
+
+  return (
+    <div className="relative flex-shrink-0 group" style={{ width: size, height: size }}>
+      {/* Avatar image / initials */}
+      <div
+        className="rounded-full overflow-hidden w-full h-full cursor-pointer"
+        onClick={() => inputRef.current?.click()}
+        title="Click to change photo"
+      >
+        {showImage ? (
+          <img
+            src={displayUrl!}
+            alt="Avatar"
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center text-white font-bold select-none"
+            style={{
+              background: "linear-gradient(135deg, #d29c3c 0%, #b8832a 100%)",
+              fontSize: size * 0.36,
+            }}
+          >
+            {getInitials(name)}
+          </div>
+        )}
+      </div>
+
+      {/* Hover overlay */}
+      {!uploading && (
+        <div
+          className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-150"
+          style={{ background: "rgba(27,17,11,0.55)" }}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Camera size={size * 0.28} color="white" />
+        </div>
+      )}
+
+      {/* Upload spinner */}
+      {uploading && (
+        <div
+          className="absolute inset-0 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(27,17,11,0.6)" }}
+        >
+          <span
+            className="border-2 border-white border-t-transparent rounded-full animate-spin"
+            style={{ width: size * 0.32, height: size * 0.32 }}
+          />
+        </div>
+      )}
+
+      {/* Remove button (only when avatar is set) */}
+      {(avatarUrl || previewUrl) && !uploading && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          title="Remove photo"
+          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-white transition-colors duration-150"
+          style={{ background: "#c0392b", border: "2px solid white" }}
+        >
+          <Trash2 size={10} />
+        </button>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   );
 }
@@ -66,17 +213,22 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
+// ── Main Settings page ────────────────────────────────────────────────────────
 export default function Settings() {
   const { user, logout } = useAuth();
   const utils = trpc.useUtils();
 
-  // ── Local form state ──────────────────────────────────────────────────────
+  // ── Profile form state ────────────────────────────────────────────────────
   const [name, setName] = useState(user?.name ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
-  const [company, setCompany] = useState(user?.company ?? "");
-  const [title, setTitle] = useState(user?.title ?? "");
+  const [phone, setPhone] = useState((user as any)?.phone ?? "");
+  const [company, setCompany] = useState((user as any)?.company ?? "");
+  const [title, setTitle] = useState((user as any)?.title ?? "");
   const [isDirty, setIsDirty] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // ── Avatar state ──────────────────────────────────────────────────────────
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Populate fields once user data loads
   useEffect(() => {
@@ -88,14 +240,13 @@ export default function Settings() {
     }
   }, [user?.id]);
 
-  // Mark dirty on any change
   const handleChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setter(e.target.value);
     setIsDirty(true);
     setSaveState("idle");
   };
 
-  // ── Save mutation ─────────────────────────────────────────────────────────
+  // ── Profile save mutation ─────────────────────────────────────────────────
   const updateProfile = trpc.users.updateProfile.useMutation({
     onMutate: () => setSaveState("saving"),
     onSuccess: () => {
@@ -112,7 +263,60 @@ export default function Settings() {
   });
 
   const handleSave = () => {
-    updateProfile.mutate({ name: name.trim() || undefined, phone: phone.trim() || undefined, company: company.trim() || undefined, title: title.trim() || undefined });
+    updateProfile.mutate({
+      name: name.trim() || undefined,
+      phone: phone.trim() || undefined,
+      company: company.trim() || undefined,
+      title: title.trim() || undefined,
+    });
+  };
+
+  // ── Avatar upload mutation ────────────────────────────────────────────────
+  const uploadAvatar = trpc.users.uploadAvatar.useMutation({
+    onSuccess: (data) => {
+      setAvatarUploading(false);
+      setPreviewUrl(null);
+      utils.auth.me.invalidate();
+      toast.success("Profile photo updated.");
+    },
+    onError: (err) => {
+      setAvatarUploading(false);
+      setPreviewUrl(null);
+      toast.error(`Upload failed: ${err.message}`);
+    },
+  });
+
+  const removeAvatar = trpc.users.removeAvatar.useMutation({
+    onSuccess: () => {
+      setPreviewUrl(null);
+      utils.auth.me.invalidate();
+      toast.success("Profile photo removed.");
+    },
+    onError: (err) => toast.error(`Failed to remove photo: ${err.message}`),
+  });
+
+  const handleFileSelected = (file: File) => {
+    // Show local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setAvatarUploading(true);
+
+    // Read as base64 and upload
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      // Strip the "data:image/xxx;base64," prefix
+      const base64 = dataUrl.split(",")[1];
+      uploadAvatar.mutate({
+        base64,
+        mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    removeAvatar.mutate();
   };
 
   const roleInfo = ROLE_LABELS[user?.role ?? "user"] ?? ROLE_LABELS.user;
@@ -125,8 +329,21 @@ export default function Settings() {
         {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <Section icon={<User size={15} />} title="Your Profile">
           {/* Avatar + identity header */}
-          <div className="flex items-center gap-4 mb-6 pb-5" style={{ borderBottom: "1px solid #f0ebe0" }}>
-            <AvatarCircle name={name || user?.name} size={64} />
+          <div className="flex items-center gap-5 mb-6 pb-5" style={{ borderBottom: "1px solid #f0ebe0" }}>
+            <div className="flex flex-col items-center gap-1.5">
+              <UploadableAvatar
+                name={name || user?.name}
+                avatarUrl={(user as any)?.avatarUrl}
+                previewUrl={previewUrl}
+                uploading={avatarUploading}
+                onFileSelected={handleFileSelected}
+                onRemove={handleRemoveAvatar}
+                size={72}
+              />
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#a09080" }}>
+                Click to change
+              </span>
+            </div>
             <div className="min-w-0">
               <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: "17px", color: "#1b110b" }}>
                 {name || user?.name || "Unnamed User"}
@@ -140,6 +357,9 @@ export default function Settings() {
               >
                 {roleInfo.label}
               </span>
+              <p className="mt-2" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>
+                JPEG, PNG, WebP or GIF · max 4 MB
+              </p>
             </div>
           </div>
 
@@ -155,17 +375,15 @@ export default function Settings() {
             </FieldRow>
 
             <FieldRow label="Email Address">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={user?.email ?? ""}
-                  readOnly
-                  disabled
-                  className="bg-[#fafaf8] cursor-not-allowed opacity-60"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
-                />
-              </div>
+              <Input
+                value={user?.email ?? ""}
+                readOnly
+                disabled
+                className="bg-[#fafaf8] cursor-not-allowed opacity-60"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+              />
               <p style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#a09080" }}>
-                Email is managed by your Manus account and cannot be changed here.
+                Managed by your Manus account.
               </p>
             </FieldRow>
 
@@ -246,10 +464,7 @@ export default function Settings() {
                       border: `1px solid ${isActive ? "#d29c3c" : "#f0ebe0"}`,
                     }}
                   >
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: isActive ? info.color : "#e8e3d8" }}
-                    />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: isActive ? info.color : "#e8e3d8" }} />
                     <div className="min-w-0">
                       <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: isActive ? 600 : 400, color: isActive ? "#1b110b" : "#7a6e62" }}>
                         {info.label}
@@ -259,10 +474,7 @@ export default function Settings() {
                       </div>
                     </div>
                     {isActive && (
-                      <span
-                        className="ml-auto flex-shrink-0"
-                        style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: info.color, textTransform: "uppercase", letterSpacing: "0.07em" }}
-                      >
+                      <span className="ml-auto flex-shrink-0" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: info.color, textTransform: "uppercase", letterSpacing: "0.07em" }}>
                         Your Role
                       </span>
                     )}
@@ -271,7 +483,7 @@ export default function Settings() {
               })}
           </div>
           <p className="mt-3" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>
-            Role changes must be made by an SLS Admin. Contact your portal administrator if your access level needs to be updated.
+            Role changes must be made by an SLS Admin.
           </p>
         </Section>
 
@@ -279,16 +491,12 @@ export default function Settings() {
         <Section icon={<Info size={15} />} title="About This Portal">
           <div className="space-y-0">
             {[
-              { label: "Portal", value: "The GRID by Southern Lighting Source" },
-              { label: "Version", value: "1.0.0" },
+              { label: "Portal",   value: "The GRID by Southern Lighting Source" },
+              { label: "Version",  value: "1.0.0" },
               { label: "Built by", value: "Taptico Solutions" },
-              { label: "Tagline", value: "On Time. On Budget. Beautiful." },
+              { label: "Tagline",  value: "On Time. On Budget. Beautiful." },
             ].map((item, i, arr) => (
-              <div
-                key={item.label}
-                className="flex items-center gap-4 py-2"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid #f0ebe0" : "none" }}
-              >
+              <div key={item.label} className="flex items-center gap-4 py-2" style={{ borderBottom: i < arr.length - 1 ? "1px solid #f0ebe0" : "none" }}>
                 <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", minWidth: "80px" }}>
                   {item.label}
                 </span>
@@ -304,7 +512,6 @@ export default function Settings() {
         <div className="pt-1">
           <GoldButton onClick={logout}>Sign Out</GoldButton>
         </div>
-
       </div>
     </div>
   );

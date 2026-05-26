@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { AvatarDisplay } from "@/pages/Settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -376,10 +377,11 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
       <div className="border-t px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
         {!collapsed ? (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-              style={{ background: "#d29c3c" }}>
-              {user?.name?.[0]?.toUpperCase() ?? "U"}
-            </div>
+            <AvatarDisplay
+              name={user?.name}
+              avatarUrl={(user as any)?.avatarUrl}
+              size={32}
+            />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium truncate" style={{ color: "#e8e3d8" }}>{user?.name ?? "User"}</div>
               <RoleBadge role={user?.role} />

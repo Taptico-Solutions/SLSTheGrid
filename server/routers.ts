@@ -910,6 +910,30 @@ const usersRouter = router({
       return { success: true };
     }),
 
+  uploadAvatar: protectedProcedure
+    .input(z.object({
+      // base64-encoded image data (without the data:image/... prefix)
+      base64: z.string().min(1).max(5_000_000), // ~3.75 MB raw → ~5 MB base64
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const buffer = Buffer.from(input.base64, "base64");
+      const ext = input.mimeType.split("/")[1];
+      const key = `avatars/user-${ctx.user.id}-${Date.now()}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      await db.update(users).set({ avatarUrl: url }).where(eq(users.id, ctx.user.id));
+      return { success: true, avatarUrl: url };
+    }),
+
+  removeAvatar: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    await db.update(users).set({ avatarUrl: null }).where(eq(users.id, ctx.user.id));
+    return { success: true };
+  }),
+
   deactivate: adminProcedure
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ ctx, input }) => {

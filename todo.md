@@ -155,13 +155,14 @@
 - [x] Write Vitest tests for pursuits schema validation, column mapping, stats aggregation, and activity types (22 tests)
 - [x] Save checkpoint and deliver
 
-## Feature: Email Invite Delivery
-- [ ] Research Manus built-in email/notification API for sending transactional email
+## Feature: Email Invite Delivery (DEFERRED — needs third-party email API)
+- [ ] Choose email provider (Resend, SendGrid, Mailgun) and obtain API key
 - [ ] Add sendInviteEmail tRPC procedure to invites router (recipient email, invite URL, invite code, role, sender name)
 - [ ] Update Admin panel invite form: add recipient email field, wire Send Email button
 - [ ] Show sent confirmation with recipient address in the invite list
 - [ ] Write Vitest tests for email invite input validation
 - [ ] Save checkpoint and deliver
+- NOTE: Manus built-in notifyOwner only sends to portal owner, not arbitrary recipients. Requires external email service.
 
 ## Feature: Taptico Workspace (Private Internal Module)
 - [x] Add `taptico` role to users enum in drizzle/schema.ts and run migration
@@ -193,4 +194,14 @@
 - [x] Wire Save Changes button to profile.update mutation with success/error feedback
 - [x] Settings nav link already in sidebar
 - [x] Write Vitest tests for profile.update input validation (9 tests, 119 total passing)
+- [x] Save checkpoint and deliver
+
+## Feature: Custom Avatar Image Upload
+- [x] Add users.uploadAvatar tRPC procedure: accept base64 image, upload to S3, save URL to users.avatarUrl
+- [x] Add users.removeAvatar tRPC procedure to clear the avatar
+- [x] Update Settings page: click avatar circle to open file picker, instant local preview, upload spinner, remove button
+- [x] AvatarDisplay component: shows image if avatarUrl exists, falls back to gold gradient initials
+- [x] Update sidebar user section to use AvatarDisplay (shows photo if set)
+- [x] Invalidate auth.me cache after upload/remove so avatar updates everywhere immediately
+- [x] Write Vitest tests for avatar upload input validation and getInitials helper (16 tests)
 - [x] Save checkpoint and deliver
