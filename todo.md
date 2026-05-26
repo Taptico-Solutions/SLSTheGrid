@@ -131,3 +131,11 @@
 - [x] Extend prospectRadar router: generateOutreach procedure using invokeLLM
 - [x] Write Vitest tests for all new router procedures
 - [x] Save checkpoint and deliver
+
+## Feature: Projects Module Load Demo
+- [x] Write projectsSeed router (loadDemo + clearDemo procedures) with full realistic project data
+- [x] Register projectsSeed router in appRouter
+- [x] Add Load Demo / Clear Demo buttons to Projects page (matching Prospect Radar style)
+- [x] Seed data: 1 project + products, milestones, budget items, change orders, submittals, team members, messages
+- [x] Write Vitest tests for seed data shape
+- [x] Save checkpoint and deliver
