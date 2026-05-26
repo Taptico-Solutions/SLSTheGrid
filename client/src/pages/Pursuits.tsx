@@ -528,25 +528,54 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
 
   function handleImport() {
     if (allRows.length === 0) return;
-    const mapped = allRows.map(r => ({
-      companyName: r.company_name || r.company || r.companyname || r.account || r.account_name || "Unknown Company",
-      projectName: r.project_name || r.project || r.projectname || r.opportunity || r.opportunity_name || "Unnamed Project",
-      projectType: r.project_type || r.type || undefined,
-      marketSector: r.market_sector || r.sector || r.vertical || undefined,
-      city: r.city || undefined,
-      state: r.state || r.st || undefined,
-      stage: r.stage || r.pipeline_stage || r.status || undefined,
-      priority: r.priority || undefined,
-      source: r.source || r.lead_source || undefined,
-      estimatedValue: r.estimated_value || r.value || r.amount || r.deal_value || undefined,
-      primaryContactName: r.primary_contact_name || r.contact_name || r.contact || r.primary_contact || undefined,
-      primaryContactEmail: r.primary_contact_email || r.email || r.contact_email || undefined,
-      primaryContactPhone: r.primary_contact_phone || r.phone || r.contact_phone || undefined,
-      ownerName: r.owner_name || r.owner || r.rep || r.sales_rep || undefined,
-      architectName: r.architect_name || r.architect || undefined,
-      generalContractorName: r.gc_name || r.general_contractor || r.gc || undefined,
-      notes: r.notes || r.description || r.comments || undefined,
-    })).filter(r => r.companyName !== "Unknown Company" || r.projectName !== "Unnamed Project");
+    const mapped = allRows
+      .filter(r => {
+        // Skip rows where every value is empty
+        return Object.values(r).some(v => v && String(v).trim() !== "");
+      })
+      .map(r => {
+        // Resolve company name — handles 'Name', 'Company Name', 'Company', 'Account', etc.
+        const companyName =
+          r.name || r.company_name || r.company || r.companyname ||
+          r.account || r.account_name || r.organization || r.firm || "";
+
+        // Resolve project name — if there's no dedicated project column, use company name
+        const projectName =
+          r.project_name || r.project || r.projectname ||
+          r.opportunity || r.opportunity_name || r.deal || companyName || "";
+
+        // Resolve type — handles 'Type', 'Project Type', 'Company Type', 'Firm Type'
+        const projectType =
+          r.type || r.project_type || r.company_type || r.firm_type ||
+          r.account_type || r.category || undefined;
+
+        // Roles to Target → notes (best fit for this field)
+        const rolesNote = r.roles_to_target || r.roles || r.target_roles || undefined;
+
+        return {
+          companyName: companyName || "Unknown",
+          projectName: projectName || companyName || "Unnamed",
+          projectType,
+          marketSector: r.market_sector || r.sector || r.vertical || r.industry || undefined,
+          city: r.city || r.location || undefined,
+          state: r.state || r.st || undefined,
+          stage: r.stage || r.pipeline_stage || r.status || undefined,
+          priority: r.priority || undefined,
+          source: r.source || r.lead_source || undefined,
+          estimatedValue: r.estimated_value || r.value || r.amount || r.deal_value || undefined,
+          primaryContactName: r.primary_contact_name || r.contact_name || r.contact || r.primary_contact || undefined,
+          primaryContactEmail: r.primary_contact_email || r.email || r.contact_email || undefined,
+          primaryContactPhone: r.primary_contact_phone || r.phone || r.contact_phone || undefined,
+          ownerName: r.owner_name || r.owner || r.rep || r.sales_rep || undefined,
+          architectName: r.architect_name || r.architect || undefined,
+          generalContractorName: r.gc_name || r.general_contractor || r.gc || undefined,
+          notes: rolesNote
+            ? `Roles to Target: ${rolesNote}${r.notes ? " | " + r.notes : ""}`
+            : r.notes || r.description || r.comments || undefined,
+        };
+      })
+      // Only drop rows with no company name at all
+      .filter(r => r.companyName !== "Unknown" || r.projectName !== "Unnamed");
 
     importMutation.mutate({ rows: mapped });
   }
