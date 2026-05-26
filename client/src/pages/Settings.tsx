@@ -1,85 +1,310 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageHeader, GoldButton } from "@/components/SLSComponents";
-import { User, Shield, Bell, Info } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { User, Shield, Info, Save, CheckCircle2, AlertCircle, Pencil } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+
+// ── Role display helpers ──────────────────────────────────────────────────────
+const ROLE_LABELS: Record<string, { label: string; desc: string; color: string }> = {
+  sls_admin: { label: "SLS Admin", desc: "Full access to all projects, users, and settings", color: "#d29c3c" },
+  admin:     { label: "SLS Admin", desc: "Full access to all projects, users, and settings", color: "#d29c3c" },
+  sls_rep:   { label: "SLS Sales Rep", desc: "Access to assigned projects and client communications", color: "#6b8fa3" },
+  sls_pm:    { label: "SLS Project Manager", desc: "Manage timelines, budgets, and orders", color: "#7a9a6b" },
+  client_architect: { label: "Client Architect / Designer", desc: "View projects and approve submittals", color: "#9a7ab5" },
+  client_gc: { label: "Client GC", desc: "View timelines, deliveries, and field notes", color: "#b58a4a" },
+  taptico:   { label: "Taptico Team", desc: "Internal Taptico workspace access", color: "#e05a5a" },
+  user:      { label: "Portal User", desc: "Read-only access to assigned content", color: "#888" },
+};
+
+function getInitials(name?: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
+  return ((parts[0][0] ?? "") + (parts[parts.length - 1][0] ?? "")).toUpperCase();
+}
+
+function AvatarCircle({ name, size = 56 }: { name?: string | null; size?: number }) {
+  const initials = getInitials(name);
+  return (
+    <div
+      className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 select-none"
+      style={{ width: size, height: size, background: "linear-gradient(135deg, #d29c3c 0%, #b8832a 100%)", fontSize: size * 0.36 }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <div className="sls-card p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <span style={{ color: "#d29c3c" }}>{icon}</span>
+        <h3 style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "13px", color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+          {title}
+        </h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Field row ─────────────────────────────────────────────────────────────────
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#7a6e62", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const utils = trpc.useUtils();
+
+  // ── Local form state ──────────────────────────────────────────────────────
+  const [name, setName] = useState(user?.name ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [company, setCompany] = useState(user?.company ?? "");
+  const [title, setTitle] = useState(user?.title ?? "");
+  const [isDirty, setIsDirty] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // Populate fields once user data loads
+  useEffect(() => {
+    if (user) {
+      setName(user.name ?? "");
+      setPhone((user as any).phone ?? "");
+      setCompany((user as any).company ?? "");
+      setTitle((user as any).title ?? "");
+    }
+  }, [user?.id]);
+
+  // Mark dirty on any change
+  const handleChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
+    setIsDirty(true);
+    setSaveState("idle");
+  };
+
+  // ── Save mutation ─────────────────────────────────────────────────────────
+  const updateProfile = trpc.users.updateProfile.useMutation({
+    onMutate: () => setSaveState("saving"),
+    onSuccess: () => {
+      setSaveState("saved");
+      setIsDirty(false);
+      utils.auth.me.invalidate();
+      toast.success("Profile updated successfully.");
+      setTimeout(() => setSaveState("idle"), 2500);
+    },
+    onError: (err) => {
+      setSaveState("error");
+      toast.error(`Failed to save: ${err.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    updateProfile.mutate({ name: name.trim() || undefined, phone: phone.trim() || undefined, company: company.trim() || undefined, title: title.trim() || undefined });
+  };
+
+  const roleInfo = ROLE_LABELS[user?.role ?? "user"] ?? ROLE_LABELS.user;
 
   return (
     <div className="page-enter">
-      <PageHeader title="Settings" subtitle="Account preferences and portal configuration" />
-      <div className="p-6 space-y-4 max-w-2xl">
-        {/* Profile */}
-        <div className="sls-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <User size={16} style={{ color: "#d29c3c" }} />
-            <h3 style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "14px", color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Profile</h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-semibold" style={{ background: "#d29c3c" }}>
-              {user?.name?.[0]?.toUpperCase() ?? "?"}
-            </div>
-            <div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: "15px", color: "#1b110b" }}>{user?.name ?? "—"}</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#7a6e62" }}>{user?.email ?? "—"}</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080", marginTop: "2px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Role: {user?.role?.replace(/_/g," ") ?? "—"}
-              </div>
-            </div>
-          </div>
-        </div>
+      <PageHeader title="Settings" subtitle="Manage your profile and account preferences" />
+      <div className="p-6 space-y-5 max-w-2xl">
 
-        {/* Access */}
-        <div className="sls-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield size={16} style={{ color: "#d29c3c" }} />
-            <h3 style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "14px", color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Access Level</h3>
-          </div>
-          <div className="space-y-2">
-            {[
-              { label: "SLS Admin", desc: "Full access to all projects, users, and settings", active: user?.role === "sls_admin" || user?.role === "admin" },
-              { label: "SLS Sales Rep", desc: "Access to assigned projects and client communications", active: user?.role === "sls_rep" },
-              { label: "SLS Project Manager", desc: "Manage timelines, budgets, and orders", active: user?.role === "sls_pm" },
-              { label: "Client Architect/Designer", desc: "View projects and approve submittals", active: user?.role === "client_architect" },
-              { label: "Client GC", desc: "View timelines, deliveries, and field notes", active: user?.role === "client_gc" },
-            ].map(item => (
-              <div key={item.label} className={`flex items-center gap-3 px-4 py-3 rounded-md ${item.active ? "bg-[#f5e9cc]" : "bg-[#fafaf8]"}`} style={{ border: `1px solid ${item.active ? "#d29c3c" : "#f0ebe0"}` }}>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.active ? "bg-[#d29c3c]" : "bg-[#e8e3d8]"}`} />
-                <div>
-                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: item.active ? 600 : 400, color: item.active ? "#1b110b" : "#7a6e62" }}>{item.label}</div>
-                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>{item.desc}</div>
-                </div>
-                {item.active && <span className="ml-auto" style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 600, color: "#d29c3c", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Role</span>}
+        {/* ── Profile Card ─────────────────────────────────────────────────── */}
+        <Section icon={<User size={15} />} title="Your Profile">
+          {/* Avatar + identity header */}
+          <div className="flex items-center gap-4 mb-6 pb-5" style={{ borderBottom: "1px solid #f0ebe0" }}>
+            <AvatarCircle name={name || user?.name} size={64} />
+            <div className="min-w-0">
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: "17px", color: "#1b110b" }}>
+                {name || user?.name || "Unnamed User"}
               </div>
-            ))}
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#7a6e62", marginTop: "2px" }}>
+                {user?.email ?? "—"}
+              </div>
+              <span
+                className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-white"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", background: roleInfo.color }}
+              >
+                {roleInfo.label}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* About */}
-        <div className="sls-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Info size={16} style={{ color: "#d29c3c" }} />
-            <h3 style={{ fontFamily: "Roboto Slab, serif", fontWeight: 600, fontSize: "14px", color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>About This Portal</h3>
+          {/* Editable fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FieldRow label="Full Name">
+              <Input
+                value={name}
+                onChange={handleChange(setName)}
+                placeholder="Your full name"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+              />
+            </FieldRow>
+
+            <FieldRow label="Email Address">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={user?.email ?? ""}
+                  readOnly
+                  disabled
+                  className="bg-[#fafaf8] cursor-not-allowed opacity-60"
+                  style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+                />
+              </div>
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#a09080" }}>
+                Email is managed by your Manus account and cannot be changed here.
+              </p>
+            </FieldRow>
+
+            <FieldRow label="Job Title">
+              <Input
+                value={title}
+                onChange={handleChange(setTitle)}
+                placeholder="e.g. Project Manager"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+              />
+            </FieldRow>
+
+            <FieldRow label="Phone">
+              <Input
+                value={phone}
+                onChange={handleChange(setPhone)}
+                placeholder="e.g. 404-555-0100"
+                type="tel"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+              />
+            </FieldRow>
+
+            <FieldRow label="Company / Organization">
+              <Input
+                value={company}
+                onChange={handleChange(setCompany)}
+                placeholder="e.g. Southern Lighting Source"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: "13px" }}
+              />
+            </FieldRow>
           </div>
+
+          {/* Save button row */}
+          <div className="flex items-center gap-3 mt-5 pt-4" style={{ borderTop: "1px solid #f0ebe0" }}>
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || saveState === "saving"}
+              className="flex items-center gap-2 px-5 py-2 rounded-md text-white font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]"
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontSize: "13px",
+                background: isDirty ? "#d29c3c" : "#c8bba8",
+                border: "none",
+              }}
+            >
+              {saveState === "saving" ? (
+                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+              ) : saveState === "saved" ? (
+                <CheckCircle2 size={15} />
+              ) : saveState === "error" ? (
+                <AlertCircle size={15} />
+              ) : (
+                <Save size={15} />
+              )}
+              {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Error — Retry" : "Save Changes"}
+            </button>
+            {isDirty && saveState === "idle" && (
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>
+                You have unsaved changes.
+              </span>
+            )}
+          </div>
+        </Section>
+
+        {/* ── Access Level ─────────────────────────────────────────────────── */}
+        <Section icon={<Shield size={15} />} title="Access Level">
           <div className="space-y-2">
+            {Object.entries(ROLE_LABELS)
+              .filter(([key]) => key !== "admin" && key !== "taptico")
+              .map(([key, info]) => {
+                const isActive = user?.role === key || (key === "sls_admin" && user?.role === "admin");
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-3 px-4 py-3 rounded-md"
+                    style={{
+                      background: isActive ? "#fdf4e3" : "#fafaf8",
+                      border: `1px solid ${isActive ? "#d29c3c" : "#f0ebe0"}`,
+                    }}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: isActive ? info.color : "#e8e3d8" }}
+                    />
+                    <div className="min-w-0">
+                      <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: isActive ? 600 : 400, color: isActive ? "#1b110b" : "#7a6e62" }}>
+                        {info.label}
+                      </div>
+                      <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>
+                        {info.desc}
+                      </div>
+                    </div>
+                    {isActive && (
+                      <span
+                        className="ml-auto flex-shrink-0"
+                        style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: info.color, textTransform: "uppercase", letterSpacing: "0.07em" }}
+                      >
+                        Your Role
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+          <p className="mt-3" style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#a09080" }}>
+            Role changes must be made by an SLS Admin. Contact your portal administrator if your access level needs to be updated.
+          </p>
+        </Section>
+
+        {/* ── About ────────────────────────────────────────────────────────── */}
+        <Section icon={<Info size={15} />} title="About This Portal">
+          <div className="space-y-0">
             {[
-              { label: "Portal", value: "Southern Lighting Source Client Portal" },
+              { label: "Portal", value: "The GRID by Southern Lighting Source" },
               { label: "Version", value: "1.0.0" },
               { label: "Built by", value: "Taptico Solutions" },
               { label: "Tagline", value: "On Time. On Budget. Beautiful." },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-4 py-1.5 border-b" style={{ borderColor: "#f0ebe0" }}>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", minWidth: "80px" }}>{item.label}</span>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#262b2e" }}>{item.value}</span>
+            ].map((item, i, arr) => (
+              <div
+                key={item.label}
+                className="flex items-center gap-4 py-2"
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid #f0ebe0" : "none" }}
+              >
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#a09080", textTransform: "uppercase", letterSpacing: "0.08em", minWidth: "80px" }}>
+                  {item.label}
+                </span>
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#262b2e" }}>
+                  {item.value}
+                </span>
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* Sign out */}
-        <div className="pt-2">
+        {/* ── Sign Out ─────────────────────────────────────────────────────── */}
+        <div className="pt-1">
           <GoldButton onClick={logout}>Sign Out</GoldButton>
         </div>
+
       </div>
     </div>
   );

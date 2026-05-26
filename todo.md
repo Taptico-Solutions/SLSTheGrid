@@ -183,3 +183,14 @@
 ## Feature: OAuth Fix
 - [x] Fix sdk.ts decodeState() to strip |invite:token suffix before passing redirectUri to Manus token exchange
 - [x] Save checkpoint (v848d7b7f)
+
+## Feature: User Profile Section
+- [x] Add profile columns to users table: phone, company, title, avatarUrl already exist in schema
+- [x] No DB migration needed — columns already present
+- [x] Add profile.get and profile.update tRPC procedures (users.updateProfile already existed)
+- [x] Build Settings/Profile page: avatar initials, name, email (read-only), job title, phone, company fields
+- [x] Show role badge on profile page (colored pill badge per role)
+- [x] Wire Save Changes button to profile.update mutation with success/error feedback
+- [x] Settings nav link already in sidebar
+- [x] Write Vitest tests for profile.update input validation (9 tests, 119 total passing)
+- [x] Save checkpoint and deliver
