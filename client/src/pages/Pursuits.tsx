@@ -528,6 +528,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
 
   function handleImport() {
     if (allRows.length === 0) return;
+
     const mapped = allRows
       .filter(r => {
         // Skip rows where every value is empty
@@ -535,9 +536,11 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
       })
       .map(r => {
         // Resolve company name — handles 'Name', 'Company Name', 'Company', 'Account', etc.
+        // Also fall back to the FIRST non-empty value in the row if nothing matches
         const companyName =
           r.name || r.company_name || r.company || r.companyname ||
-          r.account || r.account_name || r.organization || r.firm || "";
+          r.account || r.account_name || r.organization || r.firm ||
+          Object.values(r).find(v => v && String(v).trim() !== "") || "";
 
         // Resolve project name — if there's no dedicated project column, use company name
         const projectName =
@@ -576,6 +579,11 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
       })
       // Only drop rows with no company name at all
       .filter(r => r.companyName !== "Unknown" || r.projectName !== "Unnamed");
+
+    if (mapped.length === 0) {
+      setError("No records could be mapped. Check that your spreadsheet has a header row with column names like Name, Type, Company, etc.");
+      return;
+    }
 
     importMutation.mutate({ rows: mapped });
   }
