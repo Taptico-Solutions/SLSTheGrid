@@ -161,3 +161,22 @@
 - [ ] Show sent confirmation with recipient address in the invite list
 - [ ] Write Vitest tests for email invite input validation
 - [ ] Save checkpoint and deliver
+
+## Feature: Taptico Workspace (Private Internal Module)
+- [ ] Add `taptico` role to users enum in drizzle/schema.ts and run migration
+- [ ] Create taptico_todos, taptico_meetings, taptico_milestones, taptico_kpis tables
+- [ ] Build taptico tRPC router (CRUD for all 4 sections, gated to taptico role)
+- [ ] Register taptico router in appRouter
+- [ ] Build TapticoWorkspace.tsx page (4 tabs: To-Dos, Meetings, Milestones, KPIs)
+- [ ] Add /taptico-workspace route to App.tsx
+- [ ] Add Taptico Workspace sidebar nav item gated to taptico role only
+- [ ] Promote Nick (id=1) and Dave to taptico role via SQL
+- [ ] Write Vitest tests for taptico router
+- [ ] Save checkpoint and deliver
+
+## Feature: Onboarding System Upgrade
+- [ ] Change onboarding tour to show for first 3 logins (track loginCount in users table)
+- [ ] Add persistent "Help & Tour" link in sidebar visible to all users always
+- [ ] Add AI assistant explainer: tooltip/badge on Ask The GRID button explaining what it is
+- [ ] Add explainer distinguishing the sidebar AI Copilot page vs the Ask The GRID chatbot
+- [ ] Save checkpoint and deliver

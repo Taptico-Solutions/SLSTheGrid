@@ -30,6 +30,7 @@ import { invitesRouter } from "./routers/invites";
 import { searchRouter } from "./routers/search";
 import { prospectRadarRouter } from "./routers/prospectRadar";
 import { pursuitsRouter } from "./routers/pursuits";
+import { tapticoRouter } from "./routers/taptico";
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
 const INTERNAL_ROLES = ["sls_admin", "sls_rep", "sls_pm", "admin"] as const;
@@ -937,16 +938,32 @@ const usersRouter = router({
 
 // ─── Onboarding Router ──────────────────────────────────────────────────────
 const onboardingRouter = router({
+  // Returns whether the tour should show (auto-fires for first 3 logins)
   status: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const result = await db.select({ onboardingCompleted: users.onboardingCompleted }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    return { completed: result[0]?.onboardingCompleted ?? false };
+    const result = await db
+      .select({ onboardingCompleted: users.onboardingCompleted, loginCount: users.loginCount })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+    const row = result[0];
+    const loginCount = row?.loginCount ?? 1;
+    // Show tour automatically for first 3 logins, or if never completed
+    const shouldShow = !row?.onboardingCompleted || loginCount <= 3;
+    return { completed: row?.onboardingCompleted ?? false, loginCount, shouldShow };
   }),
   complete: protectedProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     await db.update(users).set({ onboardingCompleted: true }).where(eq(users.id, ctx.user.id));
+    return { success: true };
+  }),
+  // Manual replay — resets so tour shows again next load
+  replay: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    await db.update(users).set({ onboardingCompleted: false }).where(eq(users.id, ctx.user.id));
     return { success: true };
   }),
 });
@@ -1128,6 +1145,7 @@ export const appRouter = router({
   search: searchRouter,
   prospectRadar: prospectRadarRouter,
   pursuits: pursuitsRouter,
+  taptico: tapticoRouter,
 });
 
 export type AppRouter = typeof appRouter;

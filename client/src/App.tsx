@@ -25,6 +25,7 @@ import Admin from "./pages/Admin";
 import ProspectRadar from "./pages/ProspectRadar";
 import Pursuits from "./pages/Pursuits";
 import InviteAccept from "./pages/InviteAccept";
+import TapticoWorkspace from "./pages/TapticoWorkspace";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
         <Route path="/admin" component={Admin} />
         <Route path="/prospect-radar" component={ProspectRadar} />
         <Route path="/pursuits" component={Pursuits} />
+        <Route path="/taptico" component={TapticoWorkspace} />
         <Route path="/invite/:token" component={InviteAccept} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

@@ -25,6 +25,8 @@ import {
   Target,
   Users,
   Zap,
+  Lock,
+  HelpCircle,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
@@ -100,6 +102,7 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   // Collapsible department sections — persisted in localStorage
   const [sectionsOpen, setSectionsOpen] = useState<Record<string, boolean>>(() => {
@@ -191,6 +194,11 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   const salesNav: NavItem[] = [
     { label: "Prospect Radar", href: "/prospect-radar", icon: <Radar size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
     { label: "Chase List", href: "/pursuits", icon: <Target size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
+  ];
+
+  // Taptico internal workspace (taptico role only)
+  const tapticoNav: NavItem[] = [
+    { label: "Taptico Workspace", href: "/taptico", icon: <Lock size={18} />, roles: ["taptico"] },
   ];
 
   // Tools & Admin department
@@ -361,6 +369,7 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
         <NavSection sectionKey="pm" label="Project Management" items={pmNav} />
         <NavSection sectionKey="sales" label="Sales & CRM" items={salesNav} />
         <NavSection sectionKey="admin" label="Tools & Admin" items={adminNav} />
+        <NavSection sectionKey="taptico" label="Taptico" items={tapticoNav} />
       </nav>
 
       {/* User Profile */}
@@ -393,6 +402,20 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
             <LogOut size={16} />
           </button>
         )}
+      </div>
+
+      {/* Help / replay tour */}
+      <div className="px-3 pb-2">
+        <button
+          onClick={() => setShowTour(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors hover:bg-white/10"
+          title="Replay getting started tour"
+        >
+          <HelpCircle size={15} style={{ color: "#7a6e62", flexShrink: 0 }} />
+          {!collapsed && (
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#7a6e62" }}>Help &amp; Getting Started</span>
+          )}
+        </button>
       </div>
 
       {/* Powered by Taptico */}
@@ -475,8 +498,8 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
         </footer>
       </div>
 
-      {/* Onboarding Tour - first login only */}
-      <OnboardingTour />
+      {/* Onboarding Tour - auto for first 3 logins, or manually triggered via Help link */}
+      <OnboardingTour forceShow={showTour} onClose={() => setShowTour(false)} />
 
       {/* Ask The GRID - floating chatbot */}
       <AskTheGrid />

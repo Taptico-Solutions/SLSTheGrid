@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Sun,
+  Bot,
 } from "lucide-react";
 
 const TOUR_STEPS = [
@@ -26,7 +27,6 @@ const TOUR_STEPS = [
     subtitle: "by Southern Lighting Source",
     body: "The GRID is your single source of truth for every lighting project — from first spec to final install. No more email chains. No more missed submittals. Everything in one place.",
     highlight: "On Time. On Budget. Beautiful.",
-    image: null,
   },
   {
     icon: LayoutDashboard,
@@ -35,7 +35,6 @@ const TOUR_STEPS = [
     subtitle: "Your command center",
     body: "The Dashboard gives you an instant snapshot of all your projects — how many are active, whether you're on time, and whether you're on budget. Your alerts and quick actions live here too.",
     highlight: "Start every day here.",
-    image: null,
   },
   {
     icon: FolderKanban,
@@ -44,7 +43,6 @@ const TOUR_STEPS = [
     subtitle: "Everything about a job, in one place",
     body: "Each project has tabs for Products, Documents, Submittals, Budget, Timeline, Messages, and Team. Create a project, assign your team, and track every detail from spec to closeout.",
     highlight: "Projects → New Project to get started.",
-    image: null,
   },
   {
     icon: FileText,
@@ -53,7 +51,6 @@ const TOUR_STEPS = [
     subtitle: "No more hunting through email",
     body: "Upload specs, drawings, cut sheets, photos, and contracts directly to a project or to the central vault. Every file is tagged, searchable, and always accessible.",
     highlight: "Drag and drop. Done.",
-    image: null,
   },
   {
     icon: CheckSquare,
@@ -62,7 +59,6 @@ const TOUR_STEPS = [
     subtitle: "Formal approvals, tracked end-to-end",
     body: "SLS creates submittal packages for client review. Architects and designers approve or reject directly in the portal. No PDFs in email. No lost approvals. Full audit trail.",
     highlight: "Draft → Submitted → Approved.",
-    image: null,
   },
   {
     icon: DollarSign,
@@ -71,7 +67,6 @@ const TOUR_STEPS = [
     subtitle: "Know your numbers, always",
     body: "Track budgeted vs. actual costs for every line item across every project. Spot variances early. Keep clients informed. No surprises at closeout.",
     highlight: "On Budget is not an accident.",
-    image: null,
   },
   {
     icon: Calendar,
@@ -80,7 +75,6 @@ const TOUR_STEPS = [
     subtitle: "On time, every time",
     body: "Set milestones for each project phase. Track what's due, what's done, and what's delayed — across all your projects at once in the Timeline Overview.",
     highlight: "On Time is not luck.",
-    image: null,
   },
   {
     icon: MessageSquare,
@@ -89,7 +83,6 @@ const TOUR_STEPS = [
     subtitle: "Project communication, in context",
     body: "Every project has its own message thread. Keep notes, updates, and client communication tied to the project — not buried in someone's inbox.",
     highlight: "Replace email chaos with clarity.",
-    image: null,
   },
   {
     icon: Users,
@@ -98,21 +91,32 @@ const TOUR_STEPS = [
     subtitle: "Everyone who touches the project",
     body: "Assign SLS reps, project managers, architects, GCs, and clients to each project. Everyone sees what they need to see — nothing more, nothing less.",
     highlight: "Role-based access keeps it clean.",
-    image: null,
+  },
+  {
+    icon: Bot,
+    iconColor: "#7c6fd4",
+    title: "Two AI Assistants",
+    subtitle: "Both are here to help — they do different things",
+    body: "The GRID has two AI tools. The AI Copilot (left nav → AI Copilot) is a full-page workspace for deep research, drafting emails, analyzing project data, and long-form thinking. Ask The GRID (the gold button in the bottom-right corner) is a quick-access floating chat — ask it anything about the portal, how to do something, or get instant answers about your projects.",
+    highlight: "Copilot = deep work. Ask The GRID = quick answers.",
   },
   {
     icon: Sparkles,
     iconColor: "#d29c3c",
-    title: "Ask The GRID",
-    subtitle: "Your AI assistant is always on",
-    body: "See that button in the bottom left? That's Ask The GRID — your built-in assistant. Ask it anything about the portal, your projects, or how to do something. It knows The GRID inside and out.",
-    highlight: "You're ready. Let's build something beautiful.",
-    image: null,
+    title: "You're Ready",
+    subtitle: "The GRID is yours",
+    body: "You can replay this tour anytime by clicking Help in the left sidebar. Every section of the portal has tooltips and contextual guidance built in. If you ever get stuck, Ask The GRID has the answer.",
+    highlight: "On Time. On Budget. Beautiful.",
   },
 ];
 
-export function OnboardingTour() {
-  const { user, isAuthenticated } = useAuth();
+interface OnboardingTourProps {
+  forceShow?: boolean;
+  onClose?: () => void;
+}
+
+export function OnboardingTour({ forceShow, onClose }: OnboardingTourProps = {}) {
+  const { isAuthenticated } = useAuth();
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -125,22 +129,29 @@ export function OnboardingTour() {
   const completeMutation = trpc.onboarding.complete.useMutation();
 
   useEffect(() => {
-    if (onboardingStatus && !onboardingStatus.completed && !dismissed) {
-      // Small delay so the portal loads first
+    if (forceShow) {
+      setStep(0);
+      setShow(true);
+      setDismissed(false);
+      return;
+    }
+    if (onboardingStatus && onboardingStatus.shouldShow && !dismissed) {
       const timer = setTimeout(() => setShow(true), 1200);
       return () => clearTimeout(timer);
     }
-  }, [onboardingStatus, dismissed]);
+  }, [onboardingStatus, dismissed, forceShow]);
 
   const handleComplete = async () => {
     setShow(false);
     setDismissed(true);
+    onClose?.();
     await completeMutation.mutateAsync();
   };
 
   const handleSkip = async () => {
     setShow(false);
     setDismissed(true);
+    onClose?.();
     await completeMutation.mutateAsync();
   };
 

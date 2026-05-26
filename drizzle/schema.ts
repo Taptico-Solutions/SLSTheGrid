@@ -25,6 +25,7 @@ export const users = mysqlTable("users", {
     "client_gc",
     "user",
     "admin",
+    "taptico",
   ])
     .default("user")
     .notNull(),
@@ -33,6 +34,7 @@ export const users = mysqlTable("users", {
   avatarUrl: text("avatarUrl"),
   isActive: boolean("isActive").default(true).notNull(),
   onboardingCompleted: boolean("onboardingCompleted").default(false).notNull(),
+  loginCount: int("loginCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -600,3 +602,73 @@ export const pursuitActivities = mysqlTable("pursuit_activities", {
 
 export type PursuitActivity = typeof pursuitActivities.$inferSelect;
 export type InsertPursuitActivity = typeof pursuitActivities.$inferInsert;
+
+// ── Taptico Workspace (internal only — taptico role) ──────────────────────────
+
+export const tapticoTodos = mysqlTable("taptico_todos", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: mysqlEnum("status", ["todo", "in_progress", "done", "blocked"]).notNull().default("todo"),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).notNull().default("medium"),
+  dueDate: varchar("due_date", { length: 32 }),
+  assignedTo: int("assigned_to"),
+  createdBy: int("created_by"),
+  tags: varchar("tags", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const tapticoMeetings = mysqlTable("taptico_meetings", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  meetingDate: timestamp("meeting_date").notNull(),
+  durationMinutes: int("duration_minutes").default(60),
+  attendees: text("attendees"),
+  agenda: text("agenda"),
+  notes: text("notes"),
+  actionItems: text("action_items"),
+  meetingType: mysqlEnum("meeting_type", ["internal", "client", "vendor", "planning", "review", "other"]).notNull().default("internal"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const tapticoMilestones = mysqlTable("taptico_milestones", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  dueDate: varchar("due_date", { length: 32 }),
+  completedDate: varchar("completed_date", { length: 32 }),
+  status: mysqlEnum("status", ["upcoming", "in_progress", "completed", "delayed", "cancelled"]).notNull().default("upcoming"),
+  category: mysqlEnum("category", ["product", "business", "technical", "marketing", "partnership", "other"]).notNull().default("product"),
+  owner: varchar("owner", { length: 255 }),
+  progress: int("progress").default(0),
+  createdBy: int("created_by"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const tapticoKpis = mysqlTable("taptico_kpis", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", ["revenue", "growth", "product", "operations", "client", "team", "other"]).notNull().default("other"),
+  targetValue: decimal("target_value", { precision: 15, scale: 2 }),
+  currentValue: decimal("current_value", { precision: 15, scale: 2 }),
+  unit: varchar("unit", { length: 64 }),
+  period: mysqlEnum("period", ["weekly", "monthly", "quarterly", "annual", "custom"]).notNull().default("monthly"),
+  periodLabel: varchar("period_label", { length: 64 }),
+  trend: mysqlEnum("trend", ["up", "down", "flat"]).default("flat"),
+  status: mysqlEnum("status", ["on_track", "at_risk", "off_track", "achieved"]).notNull().default("on_track"),
+  notes: text("notes"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TapticoTodo = typeof tapticoTodos.$inferSelect;
+export type TapticoMeeting = typeof tapticoMeetings.$inferSelect;
+export type TapticoMilestone = typeof tapticoMilestones.$inferSelect;
+export type TapticoKpi = typeof tapticoKpis.$inferSelect;
