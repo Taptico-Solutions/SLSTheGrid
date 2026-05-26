@@ -361,7 +361,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
     onSuccess: (data) => {
       utils.pursuits.list.invalidate();
       utils.pursuits.stats.invalidate();
-      toast.success(`${data.imported} pursuits imported!`);
+      toast.success(`${data.imported} records imported to Chase List!`);
       onImported();
       onClose();
     },
@@ -386,13 +386,30 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setCsvText(text);
-      parseCSV(text);
-    };
-    reader.readAsText(file);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "xls" || ext === "xlsx") {
+      // Parse XLS/XLSX using the xlsx library
+      import("xlsx").then(XLSX => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const csv = XLSX.utils.sheet_to_csv(sheet);
+          setCsvText(csv);
+          parseCSV(csv);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        setCsvText(text);
+        parseCSV(text);
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleImport() {
@@ -426,20 +443,20 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: "Roboto Slab, serif", fontWeight: 700, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Import Pursuits from CSV
+            Import Chase List
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="rounded-lg p-3 text-xs" style={{ background: "#f9f6f0", border: "1px solid #e6dec2", fontFamily: "Inter, sans-serif", color: "#7a6e62", lineHeight: 1.6 }}>
-            <strong style={{ color: "#1b110b" }}>Expected columns (flexible mapping):</strong><br />
+            <strong style={{ color: "#1b110b" }}>Accepts CSV, XLS, or XLSX files.</strong> Flexible column mapping — common column names are auto-detected.<br />
             <code>company_name, project_name, project_type, city, state, stage, priority, estimated_value, primary_contact_name, primary_contact_email, notes</code>
           </div>
 
           <div>
             <Label style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 600, color: "#1b110b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Upload CSV File
+              Upload File (CSV, XLS, XLSX)
             </Label>
-            <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} className="hidden" />
+            <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" onChange={handleFile} className="hidden" />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -447,7 +464,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
               style={{ borderColor: "#e6dec2", fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#7a6e62" }}
             >
               <Upload size={16} style={{ color: "#d29c3c" }} />
-              Click to upload CSV or drag and drop
+              Click to upload CSV, XLS, or XLSX
             </button>
           </div>
 
@@ -503,7 +520,7 @@ function CSVImportModal({ open, onClose, onImported }: { open: boolean; onClose:
               disabled={!csvText.trim() || importMutation.isPending}
               style={{ background: "#d29c3c", color: "#fff", fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600 }}
             >
-              {importMutation.isPending ? "Importing..." : `Import ${preview.length > 0 ? "Pursuits" : ""}`}
+              {importMutation.isPending ? "Importing..." : `Import ${preview.length > 0 ? `${preview.length}+ rows` : ""}`}
             </Button>
           </div>
         </div>
@@ -557,7 +574,7 @@ export default function Pursuits() {
   if (!isInternal) {
     return (
       <div className="page-enter">
-        <PageHeader title="Pursuits" subtitle="CRM Pipeline" />
+        <PageHeader title="Chase List" subtitle="CRM Pipeline" />
         <div className="p-6">
           <EmptyState icon={<Target size={48} />} title="Access Restricted" description="This section is for internal SLS team members only." />
         </div>
@@ -568,7 +585,7 @@ export default function Pursuits() {
   return (
     <div className="page-enter">
       <PageHeader
-        title="Pursuits"
+        title="Chase List"
         subtitle="CRM pipeline — track every commercial lighting opportunity from first signal to close"
       />
 

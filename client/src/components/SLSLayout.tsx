@@ -190,7 +190,7 @@ export default function SLSLayout({ children }: SLSLayoutProps) {
   // Sales & CRM department
   const salesNav: NavItem[] = [
     { label: "Prospect Radar", href: "/prospect-radar", icon: <Radar size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
-    { label: "Pursuits", href: "/pursuits", icon: <Target size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
+    { label: "Chase List", href: "/pursuits", icon: <Target size={18} />, roles: ["sls_admin", "sls_rep", "sls_pm", "admin"] },
   ];
 
   // Tools & Admin department
