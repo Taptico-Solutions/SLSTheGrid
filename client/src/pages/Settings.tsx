@@ -141,11 +141,28 @@ function UploadableAvatar({
       {/* Hover overlay */}
       {!uploading && (
         <div
-          className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-150"
-          style={{ background: "rgba(27,17,11,0.55)" }}
+          className="absolute inset-0 rounded-full flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200"
+          style={{ background: "rgba(27,17,11,0.65)" }}
           onClick={() => inputRef.current?.click()}
         >
-          <Camera size={size * 0.28} color="white" />
+          <Camera size={size * 0.26} color="white" />
+          <span
+            style={{
+              fontFamily: "Inter, sans-serif",
+              fontSize: Math.max(9, size * 0.13),
+              fontWeight: 600,
+              color: "white",
+              textAlign: "center",
+              lineHeight: 1.2,
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              padding: "0 4px",
+            }}
+          >
+            Change
+            <br />
+            Photo
+          </span>
         </div>
       )}
 
