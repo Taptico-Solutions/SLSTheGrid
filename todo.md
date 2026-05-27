@@ -205,3 +205,9 @@
 - [x] Invalidate auth.me cache after upload/remove so avatar updates everywhere immediately
 - [x] Write Vitest tests for avatar upload input validation and getInitials helper (16 tests)
 - [x] Save checkpoint and deliver
+
+## Fix: Manus Platform OAuth Proxy Workaround
+- [x] Add /manus-oauth/callback Express route that intercepts the platform proxy and re-encodes state with correct redirectUri
+- [x] Route extracts origin from platform state, builds /api/oauth/callback redirectUri, exchanges token directly
+- [x] 0 TypeScript errors, 135 tests still passing
+- [x] Save checkpoint and deliver
